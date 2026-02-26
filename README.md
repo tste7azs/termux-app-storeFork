@@ -17,7 +17,7 @@
 [![Forks](https://img.shields.io/github/forks/djunekz/termux-app-store?logo=github&color=3fb950)](https://github.com/djunekz/termux-app-store/network)<br><br>
 [![Issues](https://img.shields.io/github/issues/djunekz/termux-app-store?style=flat&logo=github&logoColor=white&color=3fb950)](https://github.com/djunekz/termux-app-store/issues)
 [![PRs](https://img.shields.io/github/issues-pr/djunekz/termux-app-store?style=flat&logo=git&logoColor=white&color=3fb950)](https://github.com/djunekz/termux-app-store/pulls)
-[![Contributors](https://img.shields.io/github/contributors/djunekz/termux-app-store?&logo=github&color=3fb950&&cacheSeconds=0)](https://github.com/djunekz/termux-app-store/graphs/contributors)
+[![Contributors](https://img.shields.io/github/contributors/djunekz/termux-app-store?logo=github&color=3fb950&&cacheSeconds=0)](https://github.com/djunekz/termux-app-store/graphs/contributors)
 [![Community Ready](https://img.shields.io/badge/Community-Ready-3fb950?style=flat&logo=github)](https://github.com/djunekz/termux-app-store)
 
 > 🧠 **Offline-first &nbsp;•&nbsp; Source-based &nbsp;•&nbsp; Binary-safe &nbsp;•&nbsp; Termux-native**
