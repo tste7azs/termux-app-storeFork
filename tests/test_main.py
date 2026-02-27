@@ -1,5 +1,6 @@
 import sys
 import os
+import types
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -16,6 +17,11 @@ os.environ["TERMUX_APP_STORE_HOME"] = str(_fake_root)
 import termux_app_store as _pkg
 if not hasattr(_pkg, "run_tui"):
     _pkg.run_tui = MagicMock()
+
+if "termux_app_store_cli" not in sys.modules:
+    _fake_cli = types.ModuleType("termux_app_store_cli")
+    _fake_cli.run_cli = MagicMock()
+    sys.modules["termux_app_store_cli"] = _fake_cli
 
 sys.modules.pop("termux_app_store.main", None)
 from termux_app_store import main as main_module
