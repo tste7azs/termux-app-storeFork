@@ -95,8 +95,8 @@ def has_store_fingerprint(path: Path) -> bool:
                     break
                 if FINGERPRINT_STRING in line:
                     return True
-    except Exception:
-        pass
+    except Exception: # pragma: no cover
+        pass # pragma: no cover
     return False
 
 def is_valid_root(path: Path) -> bool:
