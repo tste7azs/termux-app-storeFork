@@ -178,7 +178,7 @@ class TermuxAppStore(App):
     #log-scroll { height: 1fr; border: solid #6272a4; }
     """
 
-    def on_mount(self):
+    def on_mount(self): # pragma: no cover
         self.packages = []
         self.status_cache = {}
         self.search_query = ""
@@ -192,7 +192,7 @@ class TermuxAppStore(App):
         self.load_packages()
         self.refresh_list()
 
-    def compose(self) -> ComposeResult:
+    def compose(self) -> ComposeResult: # pragma: no cover
         yield Header(show_clock=True)
         yield Input(placeholder="Search package...", id="search")
 
@@ -380,5 +380,5 @@ class TermuxAppStore(App):
 def run_tui():
     TermuxAppStore().run()
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     run_tui()
