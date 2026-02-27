@@ -10,14 +10,18 @@
 
 [![CI](https://github.com/djunekz/termux-app-store/actions/workflows/build.yml/badge.svg)](https://github.com/djunekz/termux-app-store/actions)
 [![Codecov](https://codecov.io/github/djunekz/termux-app-store/branch/master/graph/badge.svg?token=357W4EP8G0)](https://codecov.io/github/djunekz/termux-app-store)<br>
-[![Release](https://img.shields.io/github/v/release/djunekz/termux-app-store?&logo=github&color=3fb950)](https://github.com/djunekz/termux-app-store/releases)
+[![Release](https://img.shields.io/github/v/release/djunekz/termux-app-store?style=flat&logo=github&color=3fb950&include_prerelease)](https://github.com/djunekz/termux-app-store/releases)
 [![Downloads](https://img.shields.io/github/downloads/djunekz/termux-app-store/total?style=flat&logo=github&color=3fb950&logoColor=ffffff)](https://github.com/djunekz/termux-app-store)
-[![License](https://img.shields.io/badge/License-MIT-3fb950?style=flat&logo=opensourceinitiative&logoColor=white)](LICENSE)<br><br>
-[![Stars](https://img.shields.io/github/stars/djunekz/termux-app-store?logo=github&color=3fb950&logoColor=000000)](https://github.com/djunekz/termux-app-store/stargazers)
-[![Forks](https://img.shields.io/github/forks/djunekz/termux-app-store?logo=github&color=3fb950)](https://github.com/djunekz/termux-app-store/network)<br><br>
+[![License](https://img.shields.io/badge/License-MIT-3fb950?style=flat&logo=opensourceinitiative&logoColor=white)](LICENSE)
+<br>
+<br>
+[![Stars](https://img.shields.io/github/stars/djunekz/termux-app-store?logo=github&color=3fb950&label=stars)](https://github.com/djunekz/termux-app-store/stargazers)
+[![Forks](https://img.shields.io/github/forks/djunekz/termux-app-store?logo=github&color=3fb950)](https://github.com/djunekz/termux-app-store/network)
+<br>
+<br>
 [![Issues](https://img.shields.io/github/issues/djunekz/termux-app-store?style=flat&logo=github&logoColor=white&color=3fb950)](https://github.com/djunekz/termux-app-store/issues)
 [![PRs](https://img.shields.io/github/issues-pr/djunekz/termux-app-store?style=flat&logo=git&logoColor=white&color=3fb950)](https://github.com/djunekz/termux-app-store/pulls)
-[![Contributors](https://img.shields.io/github/contributors/djunekz/termux-app-store?logo=github&color=3fb950&logoColor=ffffff&cacheSeconds=0)](https://github.com/djunekz/termux-app-store/graphs/contributors)
+[![Contributors](https://img.shields.io/github/contributors/djunekz/termux-app-store?style=flat&logo=github&color=3fb950&logoColor=ffffff&cacheSeconds=0)](https://github.com/djunekz/termux-app-store/graphs/contributors)
 [![Community Ready](https://img.shields.io/badge/Community-Ready-3fb950?style=flat&logo=github)](https://github.com/djunekz/termux-app-store)
 
 > 🧠 **Offline-first &nbsp;•&nbsp; Source-based &nbsp;•&nbsp; Binary-safe &nbsp;•&nbsp; Termux-native**
