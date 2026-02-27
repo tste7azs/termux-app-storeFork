@@ -1,54 +1,53 @@
 import sys
-import types
+import os
+import tempfile
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-_mock_run_tui = MagicMock()
-_mock_run_cli = MagicMock()
-
-_fake_tui_mod = types.ModuleType("termux_app_store")
-_fake_tui_mod.run_tui = _mock_run_tui
-sys.modules["termux_app_store"] = _fake_tui_mod
-
-_fake_cli_mod = types.ModuleType("termux_app_store_cli")
-_fake_cli_mod.run_cli = _mock_run_cli
-sys.modules["termux_app_store_cli"] = _fake_cli_mod
+_tmp = tempfile.mkdtemp()
+_fake_root = Path(_tmp)
+(_fake_root / "packages").mkdir()
+(_fake_root / "build-package.sh").write_text("# Termux App Store Official\n")
+os.environ["TERMUX_APP_STORE_HOME"] = str(_fake_root)
 
 sys.modules.pop("termux_app_store.main", None)
-import termux_app_store.main as main_module
+from termux_app_store import main as main_module
 
-main_module.run_tui = _mock_run_tui
-main_module.run_cli = _mock_run_cli
+del os.environ["TERMUX_APP_STORE_HOME"]
 
 
 class TestMain:
 
-    def setup_method(self):
-        _mock_run_tui.reset_mock()
-        _mock_run_cli.reset_mock()
-
     def test_with_args_calls_run_cli(self):
-        with patch("sys.argv", ["termux-app-store", "help"]):
+        with patch("sys.argv", ["termux-app-store", "help"]), \
+             patch("termux_app_store.main.run_cli") as mock_cli, \
+             patch("termux_app_store.main.run_tui") as mock_tui:
             main_module.main()
-        _mock_run_cli.assert_called_once()
-        _mock_run_tui.assert_not_called()
+        mock_cli.assert_called_once()
+        mock_tui.assert_not_called()
 
     def test_no_args_calls_run_tui(self):
-        with patch("sys.argv", ["termux-app-store"]):
+        with patch("sys.argv", ["termux-app-store"]), \
+             patch("termux_app_store.main.run_cli") as mock_cli, \
+             patch("termux_app_store.main.run_tui") as mock_tui:
             main_module.main()
-        _mock_run_tui.assert_called_once()
-        _mock_run_cli.assert_not_called()
+        mock_tui.assert_called_once()
+        mock_cli.assert_not_called()
 
     def test_multiple_args_calls_run_cli(self):
-        with patch("sys.argv", ["termux-app-store", "install", "bower"]):
+        with patch("sys.argv", ["termux-app-store", "install", "bower"]), \
+             patch("termux_app_store.main.run_cli") as mock_cli, \
+             patch("termux_app_store.main.run_tui"):
             main_module.main()
-        _mock_run_cli.assert_called_once()
+        mock_cli.assert_called_once()
 
     def test_main_if_name_main(self):
-        with patch("sys.argv", ["termux-app-store", "help"]):
-            with patch.object(main_module, "main") as mock_main:
-                exec("main()", {"main": mock_main})
-            mock_main.assert_called_once()
+        with patch("sys.argv", ["termux-app-store", "help"]), \
+             patch("termux_app_store.main.run_cli"), \
+             patch("termux_app_store.main.run_tui"), \
+             patch.object(main_module, "main") as mock_main:
+            exec("main()", {"main": mock_main})
+        mock_main.assert_called_once()
