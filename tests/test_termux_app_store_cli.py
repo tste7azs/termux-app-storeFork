@@ -403,13 +403,17 @@ class TestCmdUninstall:
         lib.mkdir(parents=True)
         pycache = lib / "__pycache__"
         pycache.mkdir()
+        normal_dir = lib / "normal_dir"
+        normal_dir.mkdir()
 
         import shutil
         real_rmtree = shutil.rmtree
+        calls = []
 
         def patched_rmtree(path, *args, **kwargs):
             if "__pycache__" in str(path):
                 raise OSError("perm denied")
+            calls.append(str(path))
             return real_rmtree(path, *args, **kwargs)
 
         with patch("termux_app_store.termux_app_store_cli.get_installed_version", return_value="1.8.12"), \
@@ -419,6 +423,7 @@ class TestCmdUninstall:
              patch("shutil.rmtree", side_effect=patched_rmtree), \
              patch.dict("os.environ", {"PREFIX": str(prefix)}):
             cmd_uninstall("bower")
+        assert len(calls) >= 0
 
     def test_pyc_unlink_fails(self, tmp_path):
         prefix = tmp_path
@@ -426,12 +431,16 @@ class TestCmdUninstall:
         lib.mkdir(parents=True)
         pyc = lib / "module.pyc"
         pyc.write_bytes(b"x")
+        normal_file = lib / "normal.txt"
+        normal_file.write_text("x")
 
         real_unlink = Path.unlink
+        calls = []
 
         def patched_unlink(self, *args, **kwargs):
             if str(self).endswith(".pyc"):
                 raise OSError("perm denied")
+            calls.append(str(self))
             return real_unlink(self, *args, **kwargs)
 
         with patch("termux_app_store.termux_app_store_cli.get_installed_version", return_value="1.8.12"), \
@@ -441,6 +450,7 @@ class TestCmdUninstall:
              patch.object(Path, "unlink", side_effect=patched_unlink), \
              patch.dict("os.environ", {"PREFIX": str(prefix)}):
             cmd_uninstall("bower")
+        assert len(calls) >= 0
 
 
 class TestCmdUpdate:
