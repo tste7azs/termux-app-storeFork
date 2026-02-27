@@ -226,7 +226,7 @@ class TestCacheHandling:
         result = None
         try:
             data = json.loads(cache_file.read_text())
-            result = data.get("app_root")
+            result = data.get("app_root")  # pragma: no cover
         except Exception:
             result = None
         assert result is None
@@ -243,7 +243,7 @@ class TestCacheHandling:
         result = None
         try:
             data = json.loads(cache_file.read_text())
-            result = data.get("app_root")
+            result = data.get("app_root")  # pragma: no cover
         except Exception:
             result = None
         assert result is None
