@@ -611,13 +611,13 @@ class TestResolveAppRoot:
     def test_base_dir_valid(self, tmp_path):
         from termux_app_store.termux_app_store_cli import resolve_app_root
         root = self._make_valid_root(tmp_path)
+        # Patch __file__ location so base resolves to our valid root
         with patch.dict("os.environ", {"TERMUX_APP_STORE_HOME": ""}), \
              patch("termux_app_store.termux_app_store_cli.load_cached_root", return_value=None), \
-             patch("termux_app_store.termux_app_store_cli.is_valid_root", side_effect=[False, True]), \
              patch("termux_app_store.termux_app_store_cli.save_cached_root"), \
-             patch("pathlib.Path.resolve", return_value=root):
+             patch("termux_app_store.termux_app_store_cli.__file__", str(root / "termux_app_store_cli.py")):
             result = resolve_app_root()
-        assert result == root
+        assert result == root.resolve()
 
     def test_no_root_found_exits(self, tmp_path):
         from termux_app_store.termux_app_store_cli import resolve_app_root
@@ -713,3 +713,59 @@ class TestRunCliWithArgs:
              patch("termux_app_store.termux_app_store_cli.get_installed_version", return_value=None):
             run_cli()
         assert "not installed" in capsys.readouterr().out.lower()
+
+class TestRemainingBranches:
+
+    def test_has_store_fingerprint_open_error(self, tmp_path):
+        (tmp_path / "build-package.sh").write_text("x")
+        import builtins
+        real_open = builtins.open
+        def patched_open(file, *args, **kwargs):
+            if "build-package.sh" in str(file):
+                raise OSError("permission denied")
+            return real_open(file, *args, **kwargs)
+        with patch("builtins.open", side_effect=patched_open):
+            result = has_store_fingerprint(tmp_path)
+        assert result is False
+
+    def test_cmd_uninstall_pycache_rmtree_fails(self, tmp_path):
+        prefix = tmp_path
+        lib = tmp_path / "lib" / "bower"
+        lib.mkdir(parents=True)
+        (lib / "__pycache__").mkdir()
+
+        import shutil
+        real_rmtree = shutil.rmtree
+        def patched_rmtree(path, *args, **kwargs):
+            if "__pycache__" in str(path):
+                raise OSError("perm denied")
+            return real_rmtree(path, *args, **kwargs)
+
+        with patch("termux_app_store.termux_app_store_cli.get_installed_version", return_value="1.8.12"), \
+             patch("subprocess.call", return_value=0), \
+             patch("termux_app_store.termux_app_store_cli.unhold_package"), \
+             patch("termux_app_store.termux_app_store_cli.cleanup_package_files", return_value=0), \
+             patch("shutil.rmtree", side_effect=patched_rmtree), \
+             patch.dict("os.environ", {"PREFIX": str(prefix)}):
+            cmd_uninstall("bower")
+
+    def test_cmd_uninstall_pyc_unlink_fails(self, tmp_path):
+        prefix = tmp_path
+        lib = tmp_path / "lib" / "bower"
+        lib.mkdir(parents=True)
+        pyc = lib / "module.pyc"
+        pyc.write_bytes(b"x")
+
+        real_unlink = Path.unlink
+        def patched_unlink(self, *args, **kwargs):
+            if str(self).endswith(".pyc"):
+                raise OSError("perm denied")
+            return real_unlink(self, *args, **kwargs)
+
+        with patch("termux_app_store.termux_app_store_cli.get_installed_version", return_value="1.8.12"), \
+             patch("subprocess.call", return_value=0), \
+             patch("termux_app_store.termux_app_store_cli.unhold_package"), \
+             patch("termux_app_store.termux_app_store_cli.cleanup_package_files", return_value=0), \
+             patch.object(Path, "unlink", side_effect=patched_unlink), \
+             patch.dict("os.environ", {"PREFIX": str(prefix)}):
+            cmd_uninstall("bower")
