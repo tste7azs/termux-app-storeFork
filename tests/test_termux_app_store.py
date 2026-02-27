@@ -1,0 +1,439 @@
+import json
+import sys
+import pytest
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+FAKE_ROOT = Path("/tmp/fake-app-root")
+FAKE_PACKAGES = FAKE_ROOT / "packages"
+
+_textual_mocks = {
+    "textual": MagicMock(),
+    "textual.app": MagicMock(),
+    "textual.widgets": MagicMock(),
+    "textual.containers": MagicMock(),
+}
+for mod_name, mock in _textual_mocks.items():
+    sys.modules.setdefault(mod_name, mock)
+
+import types
+fake_textual_app = types.ModuleType("textual.app")
+fake_app_cls = type("App", (), {
+    "__init__": lambda self, *a, **kw: None,
+    "run": lambda self, *a, **kw: None,
+    "set_interval": lambda self, *a, **kw: None,
+    "call_from_thread": lambda self, fn, *a, **kw: fn(*a, **kw) if callable(fn) else None,
+})
+fake_textual_app.App = fake_app_cls
+fake_textual_app.ComposeResult = MagicMock()
+sys.modules["textual.app"] = fake_textual_app
+
+fake_widgets = types.ModuleType("textual.widgets")
+for widget_name in ["Header", "Input", "ListView", "ListItem", "Label",
+                    "Static", "Button", "ProgressBar"]:
+    widget_cls = type(widget_name, (), {
+        "__init__": lambda self, *a, **kw: None,
+        "update": lambda self, *a, **kw: None,
+        "clear": lambda self, *a, **kw: None,
+        "append": lambda self, *a, **kw: None,
+        "scroll_end": lambda self, *a, **kw: None,
+    })
+    setattr(fake_widgets, widget_name, widget_cls)
+sys.modules["textual.widgets"] = fake_widgets
+
+fake_containers = types.ModuleType("textual.containers")
+for cont_name in ["Horizontal", "Vertical", "VerticalScroll"]:
+    cont_cls = type(cont_name, (), {
+        "__init__": lambda self, *a, **kw: None,
+        "__enter__": lambda self: self,
+        "__exit__": lambda self, *a: None,
+    })
+    setattr(fake_containers, cont_name, cont_cls)
+sys.modules["textual.containers"] = fake_containers
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+with patch("termux_app_store.termux_app_store.resolve_app_root", return_value=FAKE_ROOT):
+    import termux_app_store.termux_app_store as tui_module
+
+from termux_app_store.termux_app_store import (
+    strip_ansi,
+    _ver_tuple,
+    get_installed_version,
+    has_store_fingerprint,
+    is_valid_root,
+    load_cached_root,
+    save_cached_root,
+    FINGERPRINT_STRING,
+)
+
+class TestStripAnsi:
+
+    def test_removes_color_codes(self):
+        assert strip_ansi("\033[32mhello\033[0m") == "hello"
+
+    def test_plain_text_unchanged(self):
+        assert strip_ansi("hello world") == "hello world"
+
+    def test_empty_string(self):
+        assert strip_ansi("") == ""
+
+    def test_mixed(self):
+        result = strip_ansi("\033[1m\033[31mERROR\033[0m: something")
+        assert result == "ERROR: something"
+
+
+class TestVerTuple:
+
+    def test_simple(self):
+        assert _ver_tuple("1.2.3") == (1, 2, 3, 0)
+
+    def test_with_revision(self):
+        assert _ver_tuple("4.10-1") == (4, 10, 1)
+
+    def test_no_suffix(self):
+        assert _ver_tuple("4.10") == (4, 10, 0)
+
+    def test_non_numeric_revision(self):
+        assert _ver_tuple("2.0-pre") == (2, 0, 0)
+
+    def test_non_numeric_segment(self):
+        assert _ver_tuple("1.alpha.3") == (1, 0, 3, 0)
+
+    def test_ordering(self):
+        assert _ver_tuple("1.9.0") < _ver_tuple("1.10.0")
+        assert _ver_tuple("4.10-2") > _ver_tuple("4.10-1")
+
+
+class TestGetInstalledVersion:
+
+    def test_installed(self):
+        with patch("subprocess.check_output", return_value="install ok installed\t1.8.12"):
+            assert get_installed_version("bower") == "1.8.12"
+
+    def test_not_installed_status(self):
+        with patch("subprocess.check_output", return_value="deinstall ok config-files\t"):
+            assert get_installed_version("bower") is None
+
+    def test_empty_output(self):
+        with patch("subprocess.check_output", return_value=""):
+            assert get_installed_version("bower") is None
+
+    def test_exception(self):
+        with patch("subprocess.check_output", side_effect=Exception("not found")):
+            assert get_installed_version("bower") is None
+
+    def test_installed_version_empty_string(self):
+        with patch("subprocess.check_output", return_value="install ok installed\t"):
+            assert get_installed_version("bower") is None
+
+
+class TestHasStoreFingerprint:
+
+    def test_with_fingerprint(self, tmp_path):
+        (tmp_path / "build-package.sh").write_text(f"# {FINGERPRINT_STRING}\nset -e\n")
+        assert has_store_fingerprint(tmp_path) is True
+
+    def test_without_fingerprint(self, tmp_path):
+        (tmp_path / "build-package.sh").write_text("# other\nset -e\n")
+        assert has_store_fingerprint(tmp_path) is False
+
+    def test_no_file(self, tmp_path):
+        assert has_store_fingerprint(tmp_path) is False
+
+    def test_exception(self, tmp_path):
+        (tmp_path / "build-package.sh").write_text("x")
+        import builtins
+        real_open = builtins.open
+        def patched_open(file, *args, **kwargs):
+            if "build-package.sh" in str(file):
+                raise OSError("perm denied")
+            return real_open(file, *args, **kwargs)
+        with patch("builtins.open", side_effect=patched_open):
+            assert has_store_fingerprint(tmp_path) is False
+
+    def test_fingerprint_beyond_20_lines(self, tmp_path):
+        lines = ["# line\n"] * 25 + [f"# {FINGERPRINT_STRING}\n"]
+        (tmp_path / "build-package.sh").write_text("".join(lines))
+        assert has_store_fingerprint(tmp_path) is False
+
+
+class TestIsValidRoot:
+
+    def test_valid(self, tmp_path):
+        (tmp_path / "packages").mkdir()
+        (tmp_path / "build-package.sh").write_text(f"# {FINGERPRINT_STRING}\n")
+        assert is_valid_root(tmp_path) is True
+
+    def test_missing_packages(self, tmp_path):
+        (tmp_path / "build-package.sh").write_text(f"# {FINGERPRINT_STRING}\n")
+        assert is_valid_root(tmp_path) is False
+
+    def test_missing_build_package_sh(self, tmp_path):
+        (tmp_path / "packages").mkdir()
+        assert is_valid_root(tmp_path) is False
+
+    def test_not_a_dir(self, tmp_path):
+        assert is_valid_root(tmp_path / "nonexistent") is False
+
+
+class TestCacheRoot:
+
+    def test_save_and_load(self, tmp_path):
+        cache = tmp_path / "cache.json"
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / "packages").mkdir()
+        (root / "build-package.sh").write_text(f"# {FINGERPRINT_STRING}\n")
+
+        with patch.object(tui_module, "CACHE_FILE", cache):
+            save_cached_root(root)
+            # Reload using patched CACHE_FILE
+            with patch("termux_app_store.termux_app_store.CACHE_FILE", cache):
+                result = load_cached_root()
+        assert result == root.resolve()
+
+    def test_load_invalid_path(self, tmp_path):
+        cache = tmp_path / "cache.json"
+        cache.write_text(json.dumps({"app_root": "/nonexistent/path"}))
+        with patch("termux_app_store.termux_app_store.CACHE_FILE", cache):
+            assert load_cached_root() is None
+
+    def test_load_missing_cache(self, tmp_path):
+        cache = tmp_path / "nonexistent.json"
+        with patch("termux_app_store.termux_app_store.CACHE_FILE", cache):
+            assert load_cached_root() is None
+
+    def test_load_corrupt_cache(self, tmp_path):
+        cache = tmp_path / "cache.json"
+        cache.write_text("{ broken {{{")
+        with patch("termux_app_store.termux_app_store.CACHE_FILE", cache):
+            assert load_cached_root() is None
+
+    def test_save_exception(self, tmp_path):
+        cache = tmp_path / "cache.json"
+        with patch("termux_app_store.termux_app_store.CACHE_FILE", cache), \
+             patch("pathlib.Path.mkdir", side_effect=OSError("perm denied")):
+            save_cached_root(tmp_path)  # should not raise
+
+
+class TestResolveAppRoot:
+
+    def _make_valid_root(self, tmp_path):
+        (tmp_path / "packages").mkdir()
+        (tmp_path / "build-package.sh").write_text(f"# {FINGERPRINT_STRING}\n")
+        return tmp_path
+
+    def test_env_override_valid(self, tmp_path):
+        root = self._make_valid_root(tmp_path)
+        with patch.dict("os.environ", {"TERMUX_APP_STORE_HOME": str(root)}), \
+             patch("termux_app_store.termux_app_store.save_cached_root"):
+            result = tui_module.resolve_app_root()
+        assert result == root.resolve()
+
+    def test_cached_root_used(self, tmp_path):
+        root = self._make_valid_root(tmp_path)
+        with patch.dict("os.environ", {"TERMUX_APP_STORE_HOME": ""}), \
+             patch("termux_app_store.termux_app_store.load_cached_root", return_value=root):
+            result = tui_module.resolve_app_root()
+        assert result == root
+
+    def test_base_dir_valid(self, tmp_path):
+        root = self._make_valid_root(tmp_path)
+        with patch.dict("os.environ", {"TERMUX_APP_STORE_HOME": ""}), \
+             patch("termux_app_store.termux_app_store.load_cached_root", return_value=None), \
+             patch("termux_app_store.termux_app_store.save_cached_root"), \
+             patch("termux_app_store.termux_app_store.__file__", str(root / "termux_app_store.py")):
+            result = tui_module.resolve_app_root()
+        assert result == root.resolve()
+
+    def test_no_root_raises(self, tmp_path):
+        with patch.dict("os.environ", {"TERMUX_APP_STORE_HOME": ""}), \
+             patch("termux_app_store.termux_app_store.load_cached_root", return_value=None), \
+             patch("termux_app_store.termux_app_store.is_valid_root", return_value=False):
+            with pytest.raises(FileNotFoundError):
+                tui_module.resolve_app_root()
+
+
+class TestTermuxAppStoreUnit:
+
+    def _make_app(self, tmp_path):
+        """Buat instance TermuxAppStore dengan minimal setup."""
+        app = tui_module.TermuxAppStore.__new__(tui_module.TermuxAppStore)
+        app.packages = []
+        app.status_cache = {}
+        app.search_query = ""
+        app.current_item = None
+        app.installing = False
+        app.log_buffer = []
+        app.list_view = MagicMock()
+        app.info = MagicMock()
+        app.log_view = MagicMock()
+        app.log_container = MagicMock()
+        app.progress = MagicMock()
+        app.install_btn = MagicMock()
+        return app
+
+    def _make_pkg(self, root, name, version="1.0.0"):
+        pkg_dir = root / name
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+        (pkg_dir / "build.sh").write_text(
+            f'TERMUX_PKG_VERSION="{version}"\n'
+            f'TERMUX_PKG_DESCRIPTION="A tool"\n'
+            f'TERMUX_PKG_DEPENDS="nodejs"\n'
+            f'TERMUX_PKG_MAINTAINER="@dev"\n'
+        )
+        return pkg_dir
+
+    def test_get_status_not_installed(self, tmp_path):
+        app = self._make_app(tmp_path)
+        with patch("termux_app_store.termux_app_store.get_installed_version", return_value=None):
+            assert app.get_status("bower", "1.8.12") == "NOT INSTALLED"
+
+    def test_get_status_installed(self, tmp_path):
+        app = self._make_app(tmp_path)
+        with patch("termux_app_store.termux_app_store.get_installed_version", return_value="1.8.12"):
+            assert app.get_status("bower", "1.8.12") == "INSTALLED"
+
+    def test_get_status_update(self, tmp_path):
+        app = self._make_app(tmp_path)
+        with patch("termux_app_store.termux_app_store.get_installed_version", return_value="1.8.11"):
+            assert app.get_status("bower", "1.8.12") == "UPDATE"
+
+    def test_get_status_cached(self, tmp_path):
+        app = self._make_app(tmp_path)
+        app.status_cache["bower"] = "INSTALLED"
+        # Should return cached without calling get_installed_version
+        with patch("termux_app_store.termux_app_store.get_installed_version") as mock_giv:
+            result = app.get_status("bower", "1.8.12")
+        assert result == "INSTALLED"
+        mock_giv.assert_not_called()
+
+    def test_load_packages(self, tmp_path):
+        self._make_pkg(tmp_path, "bower", "1.8.12")
+        self._make_pkg(tmp_path, "pnpm", "10.30.1")
+        app = self._make_app(tmp_path)
+        with patch.object(tui_module, "PACKAGES_DIR", tmp_path):
+            app.load_packages()
+        assert len(app.packages) == 2
+        assert app.packages[0]["name"] == "bower"
+        assert app.packages[0]["version"] == "1.8.12"
+
+    def test_load_packages_skips_without_build_sh(self, tmp_path):
+        (tmp_path / "nosh").mkdir()
+        app = self._make_app(tmp_path)
+        with patch.object(tui_module, "PACKAGES_DIR", tmp_path):
+            app.load_packages()
+        assert app.packages == []
+
+    def test_refresh_list_empty_search(self, tmp_path):
+        app = self._make_app(tmp_path)
+        app.packages = [
+            {"name": "bower", "version": "1.8.12", "desc": "-", "deps": "-", "maintainer": "-"},
+            {"name": "pnpm",  "version": "10.0",   "desc": "-", "deps": "-", "maintainer": "-"},
+        ]
+        app.search_query = ""
+        app.list_view.children = []
+        app.refresh_list()
+        assert app.list_view.append.call_count == 2
+
+    def test_refresh_list_with_search(self, tmp_path):
+        app = self._make_app(tmp_path)
+        app.packages = [
+            {"name": "bower", "version": "1.8.12", "desc": "-", "deps": "-", "maintainer": "-"},
+            {"name": "pnpm",  "version": "10.0",   "desc": "-", "deps": "-", "maintainer": "-"},
+        ]
+        app.search_query = "bower"
+        app.list_view.children = []
+        app.refresh_list()
+        assert app.list_view.append.call_count == 1
+
+    def test_update_log_appends(self, tmp_path):
+        app = self._make_app(tmp_path)
+        app.update_log("line 1")
+        app.update_log("line 2")
+        assert "line 1" in app.log_buffer
+        assert "line 2" in app.log_buffer
+
+    def test_update_log_truncates_at_500(self, tmp_path):
+        app = self._make_app(tmp_path)
+        for i in range(600):
+            app.update_log(f"line {i}")
+        assert len(app.log_buffer) <= 500
+
+    def test_update_log_no_line(self, tmp_path):
+        app = self._make_app(tmp_path)
+        app.log_buffer = ["existing"]
+        app.update_log()  # no line arg
+        app.log_view.update.assert_called()
+
+    def test_show_preview_not_installed(self, tmp_path):
+        app = self._make_app(tmp_path)
+        pkg = {"name": "bower", "version": "1.8.12", "desc": "A tool",
+               "deps": "nodejs", "maintainer": "@dev"}
+        item = MagicMock()
+        item.pkg = pkg
+        with patch.object(app, "get_status", return_value="NOT INSTALLED"), \
+             patch("termux_app_store.termux_app_store.get_installed_version", return_value=None):
+            app.show_preview(item)
+        app.info.update.assert_called_once()
+
+    def test_show_preview_installed(self, tmp_path):
+        app = self._make_app(tmp_path)
+        pkg = {"name": "bower", "version": "1.8.12", "desc": "A tool",
+               "deps": "-", "maintainer": "@dev"}
+        item = MagicMock()
+        item.pkg = pkg
+        with patch.object(app, "get_status", return_value="INSTALLED"), \
+             patch("termux_app_store.termux_app_store.get_installed_version", return_value="1.8.12"):
+            app.show_preview(item)
+        app.info.update.assert_called_once()
+
+    def test_show_preview_update(self, tmp_path):
+        app = self._make_app(tmp_path)
+        pkg = {"name": "bower", "version": "1.8.12", "desc": "A tool",
+               "deps": "nodejs,python", "maintainer": "@dev"}
+        item = MagicMock()
+        item.pkg = pkg
+        with patch.object(app, "get_status", return_value="UPDATE"), \
+             patch("termux_app_store.termux_app_store.get_installed_version", return_value="1.8.11"):
+            app.show_preview(item)
+        app.info.update.assert_called_once()
+
+    def test_run_build_sync_success(self, tmp_path):
+        app = self._make_app(tmp_path)
+        mock_proc = MagicMock()
+        mock_proc.stdout.readline.side_effect = [b"Installing...\n", b""]
+        mock_proc.returncode = 0
+
+        with patch("subprocess.Popen", return_value=mock_proc), \
+             patch.object(tui_module, "ROOT_DIR", tmp_path), \
+             patch.object(tui_module, "PACKAGES_DIR", tmp_path), \
+             patch.object(app, "load_packages"), \
+             patch.object(app, "refresh_list"):
+            app.run_build_sync("bower")
+
+        assert app.installing is False
+
+    def test_run_build_sync_failure(self, tmp_path):
+        app = self._make_app(tmp_path)
+        mock_proc = MagicMock()
+        mock_proc.stdout.readline.side_effect = [b""]
+        mock_proc.returncode = 1
+
+        with patch("subprocess.Popen", return_value=mock_proc), \
+             patch.object(tui_module, "ROOT_DIR", tmp_path), \
+             patch.object(tui_module, "PACKAGES_DIR", tmp_path), \
+             patch.object(app, "load_packages"), \
+             patch.object(app, "refresh_list"):
+            app.run_build_sync("bower")
+
+        assert app.installing is False
+
+
+class TestRunTui:
+
+    def test_run_tui(self):
+        with patch.object(tui_module.TermuxAppStore, "run") as mock_run:
+            tui_module.run_tui()
+        mock_run.assert_called_once()
