@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-02-28T02:07:29.476649+00:00",
-  "total": 28,
+  "generated_at": "2026-02-28T19:53:35.169602+00:00",
+  "total": 29,
   "packages": [
     {
       "package": "aircrack-ng",
@@ -390,6 +390,24 @@
       "platform_independent": false,
       "depends": [
         "python"
+      ]
+    },
+    {
+      "package": "zorabuilder",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Builder python standalone ELF",
+      "homepage": "https://github.com/djunekz/termux-app-store",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/zorabuilder",
+      "sha256": "e455fd0af70ad3985f83dbfccb45af92036fa67cf1bfb09c713de0333be01918",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "binutils-is-llvm"
       ]
     },
     {
