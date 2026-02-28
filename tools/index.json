@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-02-28T19:53:35.169602+00:00",
+  "generated_at": "2026-02-28T19:59:35.896710+00:00",
   "total": 29,
   "packages": [
     {
@@ -377,7 +377,7 @@
     },
     {
       "package": "zora",
-      "version": "1.2.0",
+      "version": "1.2.2",
       "maintainer": "@termux-app-store",
       "description": "The ultimate OSINT framework",
       "homepage": "https://github/djunekz/termux-app-store",
@@ -386,7 +386,7 @@
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/zora",
-      "sha256": "67a14fda2deb84d22c9a9129a9707ed21bad6d25ac2de884c4ed888e6ba197cc",
+      "sha256": "d59f21a5261da3eea7e2e1898255d672b57efcb8be763a7f77a0b5c0093d18ec",
       "platform_independent": false,
       "depends": [
         "python"
