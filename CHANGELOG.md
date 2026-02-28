@@ -24,6 +24,7 @@ and this project adheres to semantic versioning.
 - Package `sigit` v2.0-pre - SIGIT - Simple Information Gathering Toolkit
 - Package `tuifimanager` v5.2.6 - A terminal-based TUI file manager
 - Package `uv` v0.10.4 - An extremely fast Python package and project manager, written in Rust.
+- Package `zorabuilder` v1.0.0 - Builder python standalone ELF
 
 ### Changed
 - Package `impulse` v1.0.0 - Updated metadata
