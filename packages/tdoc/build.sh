@@ -2,10 +2,10 @@ TERMUX_PKG_HOMEPAGE=https://github.com/djunekz/tdoc
 TERMUX_PKG_DESCRIPTION="TDOC - Diagnostic and repair utility for Termux environment"
 TERMUX_PKG_LICENSE="MIT"
 TERMUX_PKG_MAINTAINER="@djunekz"
-TERMUX_PKG_VERSION=1.0.5
+TERMUX_PKG_VERSION=1.0.6
 
 TERMUX_PKG_SRCURL=https://github.com/djunekz/tdoc/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz
-TERMUX_PKG_SHA256=9460e410448fdac970a1bba4901fb7c69f04b48bdf500d3bb42d0fb67c194cec
+TERMUX_PKG_SHA256=5cded7dd0c642f7703c12148c336f10cdf9fbabcfb37d2d8e8fdd41a6fb515a3
 
 TERMUX_PKG_PLATFORM_INDEPENDENT=true
 TERMUX_PKG_BUILD_IN_SRC=true
