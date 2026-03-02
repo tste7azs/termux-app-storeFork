@@ -7,10 +7,11 @@ INSTALL_DIR="$PREFIX/lib/.tas"
 BIN_DIR="$PREFIX/bin"
 REPO="djunekz/termux-app-store"
 BIN_PATH="$INSTALL_DIR/$APP_NAME"
+SENTINEL="$INSTALL_DIR/.installed"
 SYMLINK="$BIN_DIR/$APP_NAME"
 TASCTL_SYMLINK="$BIN_DIR/$CTL_NAME"
 GITHUB_API="https://api.github.com/repos/$REPO/releases/latest"
-TASCTL_RAW="https://raw.githubusercontent.com/$REPO/main/tasctl"
+TASCTL_RAW="https://raw.githubusercontent.com/$REPO/master/tasctl"
 
 R=$'\033[0m'
 B=$'\033[1m'
@@ -49,9 +50,9 @@ banner() {
 
 detect_arch() {
   case "$(uname -m)" in
-    aarch64) echo "termux-app-store-aarch64" ;;
+    aarch64)   echo "termux-app-store-aarch64" ;;
     armv7l|armv8l) echo "termux-app-store-arm" ;;
-    x86_64)  echo "termux-app-store-x86_64" ;;
+    x86_64)    echo "termux-app-store-x86_64" ;;
     i686|i386) echo "termux-app-store-i686" ;;
     *) err "Unsupported architecture: $(uname -m)" ;;
   esac
@@ -67,17 +68,53 @@ fetch_latest_tag() {
 }
 
 get_installed_version() {
-  if [[ ! -f "$BIN_PATH" ]]; then
-    echo "not installed"
-    return
+  if [[ -f "$SENTINEL" ]]; then
+    local ver
+    ver=$(grep '^version=' "$SENTINEL" 2>/dev/null | cut -d= -f2 || true)
+    [[ -n "$ver" ]] && echo "$ver" && return
   fi
-  local ver
-  ver=$(strings "$BIN_PATH" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+' | head -1 || true)
-  if [[ -n "$ver" ]]; then
-    echo "$ver"
+
+  if [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]]; then
+    local ver
+    ver=$(grep -oP 'APP_VERSION\s*=\s*"\K[0-9.]+' \
+      "$INSTALL_DIR/termux_app_store/main.py" 2>/dev/null | head -1 || true)
+    [[ -n "$ver" ]] && echo "$ver" && return
+  fi
+
+  if [[ -f "$BIN_PATH" ]] && file "$BIN_PATH" 2>/dev/null | grep -q ELF; then
+    local ver
+    ver=$(strings "$BIN_PATH" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+' | head -1 \
+      | sed 's/^v//' || true)
+    [[ -n "$ver" ]] && echo "$ver" && return
+  fi
+
+  echo "unknown"
+}
+
+get_install_mode() {
+  if [[ -f "$SENTINEL" ]]; then
+    grep '^mode=' "$SENTINEL" 2>/dev/null | cut -d= -f2 || echo "unknown"
+  elif [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]]; then
+    echo "source"
+  elif [[ -f "$BIN_PATH" ]] && file "$BIN_PATH" 2>/dev/null | grep -q ELF; then
+    echo "binary"
   else
-    echo "installed"
+    echo "unknown"
   fi
+}
+
+is_installed() {
+  [[ -f "$BIN_PATH" ]] || [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]]
+}
+
+write_sentinel() {
+  local ver="$1" mode="$2"
+  mkdir -p "$INSTALL_DIR"
+  cat > "$SENTINEL" << EOF
+version=$ver
+mode=$mode
+installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+EOF
 }
 
 install_app() {
@@ -110,6 +147,9 @@ install_app() {
   ln -sf "$BIN_PATH" "$SYMLINK"
   ok "Symlink: $SYMLINK → $BIN_PATH"
 
+  local ver="${tag#v}"
+  write_sentinel "$ver" "binary"
+
   printf "\n%s  ✔ %s %s %sed successfully!%s\n" "$GREEN$B" "$APP_NAME" "$tag" "$mode" "$R"
   info "Run with: ${CYAN}$APP_NAME${R}"
   printf "\n"
@@ -119,16 +159,20 @@ uninstall_app() {
   banner
   header "Uninstall"
 
-  if [[ ! -f "$BIN_PATH" ]] && [[ ! -L "$SYMLINK" ]]; then
+  if ! is_installed && [[ ! -L "$SYMLINK" ]] && [[ ! -f "$SYMLINK" ]]; then
     warn "$APP_NAME is not installed."
     return
   fi
 
-  step "Removing symlink..."
+  local imode
+  imode=$(get_install_mode)
+  info "Detected mode: $imode"
+
+  step "Removing wrapper/symlink..."
   rm -f "$SYMLINK"
   ok "Removed: $SYMLINK"
 
-  step "Removing binary..."
+  step "Removing installation directory..."
   rm -rf "$INSTALL_DIR"
   ok "Removed: $INSTALL_DIR"
 
@@ -183,7 +227,7 @@ cmd_doctor() {
     ok "textual v$txt_ver"
   else
     warn "Textual not found"
-    info "Fix: pip install textual"
+    info "Fix: pip install textual --break-system-packages"
     all_ok=false
   fi
 
@@ -196,22 +240,28 @@ cmd_doctor() {
     all_ok=false
   fi
 
-  printf "\n %s%s binary%s\n" "$B" "$APP_NAME" "$R"
-  if [[ -f "$BIN_PATH" ]]; then
-    local inst_ver
+  printf "\n %s%s installation%s\n" "$B" "$APP_NAME" "$R"
+  if is_installed; then
+    local inst_ver imode
     inst_ver=$(get_installed_version)
-    ok "Found: $BIN_PATH"
-    info "Version: $inst_ver"
-    if [[ -L "$SYMLINK" ]]; then
-      ok "Symlink OK: $SYMLINK"
+    imode=$(get_install_mode)
+    ok "Installed: $INSTALL_DIR"
+    info "Version : $inst_ver"
+    info "Mode    : $imode"
+    if [[ "$imode" == "source" ]]; then
+      [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]] \
+        && ok "main.py OK" || { warn "main.py missing"; all_ok=false; }
     else
-      warn "Symlink missing: $SYMLINK"
-      info "Fix: ln -sf $BIN_PATH $SYMLINK"
-      all_ok=false
+      [[ -f "$BIN_PATH" ]] \
+        && ok "Binary OK: $BIN_PATH" || { warn "Binary missing"; all_ok=false; }
     fi
+    [[ -f "$SYMLINK" ]] || [[ -L "$SYMLINK" ]] \
+      && ok "Wrapper OK: $SYMLINK" \
+      || { warn "Wrapper missing: $SYMLINK"; info "Fix: run install.sh again"; all_ok=false; }
+    [[ -f "$SENTINEL" ]] && ok "Sentinel OK" || warn "Sentinel missing (install info not found)"
   else
     warn "$APP_NAME not installed"
-    info "Fix: $CTL_NAME install"
+    info "Fix: $CTL_NAME install   or   bash install.sh"
     all_ok=false
   fi
 
@@ -220,12 +270,11 @@ cmd_doctor() {
     if [[ -d "$TERMUX_APP_STORE_HOME/packages" ]]; then
       ok "Set and valid: $TERMUX_APP_STORE_HOME"
     else
-      warn "Set but invalid path: $TERMUX_APP_STORE_HOME"
-      info "packages/ directory not found inside it"
+      warn "Set but invalid: $TERMUX_APP_STORE_HOME"
       all_ok=false
     fi
   else
-    info "Not set (optional — uses cache if previously run)"
+    info "Not set (optional)"
   fi
 
   printf "\n%s%s%s\n" "$DIM" "$(printf '─%.0s' $(seq 1 42))" "$R"
