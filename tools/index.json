@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-03-02T02:27:17.114453+00:00",
-  "total": 29,
+  "generated_at": "2026-03-02T17:07:50.895625+00:00",
+  "total": 30,
   "packages": [
     {
       "package": "aircrack-ng",
@@ -65,6 +65,23 @@
       "srcurl": "https://github.com/djunekz/bashxt/releases/download/v${TERMUX_PKG_VERSION}/bashxt.tar.gz",
       "sha256": "b9b27f232d6a752f3243e915d98bb03ecbd982f37e45243d7b82905f745e9512",
       "platform_independent": false
+    },
+    {
+      "package": "basic",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Simulator Terminal learning basic command for beginner",
+      "homepage": "https://github.com/djunekz/basic",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/djunekz/basic/releases/download/${TERMUX_PKG_VERSION}/basic_${TERMUX_PKG_VERSION}_all.deb",
+      "sha256": "85e204a53f11b027a9fa0226a81ed702813a307582792b2483dd93b5f43751d1",
+      "platform_independent": false,
+      "depends": [
+        "python"
+      ]
     },
     {
       "package": "baxter",
