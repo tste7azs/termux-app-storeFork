@@ -49,7 +49,7 @@ INDEX_CACHE = (
 )
 
 GITHUB_REPO = "djunekz/termux-app-store"
-INDEX_URL   = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/tools/index.json"
+INDEX_URL   = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/tools/index.json"
 
 FINGERPRINT_STRING = "Termux App Store Official"
 
