@@ -150,8 +150,6 @@ def resolve_app_root() -> Path:
     sys.exit(1)
 
 
-# ── Index / Package loading ────────────────────────────────────────────────
-
 def fetch_index_from_github() -> list:
     """Fetch index.json dari GitHub raw. Return list packages atau []."""
     try:
@@ -162,7 +160,7 @@ def fetch_index_from_github() -> list:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
             pkgs = data.get("packages", [])
-            # Simpan ke cache lokal
+
             try:
                 INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
                 INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
@@ -174,7 +172,6 @@ def fetch_index_from_github() -> list:
 
 
 def load_index_cache() -> list:
-    """Baca index.json dari cache lokal."""
     try:
         if INDEX_CACHE_FILE.exists():
             data = json.loads(INDEX_CACHE_FILE.read_text())
@@ -185,7 +182,6 @@ def load_index_cache() -> list:
 
 
 def load_packages_from_local(packages_dir: Path) -> list:
-    """Fallback: baca dari packages/*/build.sh lokal."""
     pkgs = []
     if not packages_dir.exists():
         return pkgs
@@ -221,7 +217,6 @@ def load_packages_from_local(packages_dir: Path) -> list:
 
 
 def normalize_pkg(raw: dict) -> dict:
-    """Normalize ke format internal."""
     deps = raw.get("depends", [])
     if isinstance(deps, str):
         deps = [d.strip() for d in deps.split(",") if d.strip()]
@@ -237,12 +232,6 @@ def normalize_pkg(raw: dict) -> dict:
 
 
 def get_packages(packages_dir: Path, online: bool = True) -> list:
-    """
-    Ambil daftar packages dengan prioritas:
-    1. GitHub index.json (online, selalu fresh)
-    2. Cache index.json lokal
-    3. Fallback baca packages/ lokal
-    """
     if online:
         raw = fetch_index_from_github()
         if raw:
@@ -255,8 +244,6 @@ def get_packages(packages_dir: Path, online: bool = True) -> list:
     raw = load_packages_from_local(packages_dir)
     return [normalize_pkg(p) for p in raw]
 
-
-# ── Package status ─────────────────────────────────────────────────────────
 
 def get_installed_version(name: str):
     try:
@@ -342,8 +329,6 @@ def cleanup_package_files(name: str) -> int:
     return removed_count
 
 
-# ── CLI Commands ───────────────────────────────────────────────────────────
-
 def cmd_list(packages_dir: Path):
     print(f"\n{DIM}[*] Loading package list...{R}")
     pkgs = get_packages(packages_dir, online=True)
@@ -391,11 +376,10 @@ def cmd_show(packages_dir: Path, name: str):
 
 
 def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False) -> bool:
-    pkgs = get_packages(packages_dir, online=False)  # install pakai cache, tidak perlu fetch ulang
+    pkgs = get_packages(packages_dir, online=False)
     p = next((x for x in pkgs if x["name"] == name), None)
 
     if not p:
-        # Coba online sekali lagi
         pkgs = get_packages(packages_dir, online=True)
         p = next((x for x in pkgs if x["name"] == name), None)
 
@@ -532,7 +516,6 @@ def cmd_update(packages_dir: Path):
 
 
 def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
-    # Selalu fetch fresh saat upgrade
     pkgs = get_packages(packages_dir, online=True)
 
     if target:
@@ -586,7 +569,6 @@ def cmd_version():
     INSTALL_DIR = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib" / ".tas"
     SENTINEL = INSTALL_DIR / ".installed"
 
-    # 1. Baca versi lokal dari sentinel
     local_ver = None
     if SENTINEL.exists():
         try:
@@ -597,7 +579,6 @@ def cmd_version():
         except Exception:
             pass
 
-    # 2. Fallback: baca APP_VERSION dari file Python
     if not local_ver:
         for f in [
             INSTALL_DIR / "termux_app_store" / "main.py",
@@ -613,7 +594,6 @@ def cmd_version():
                 except Exception:
                     pass
 
-    # 3. Fetch versi terbaru dari GitHub
     print(f"\n{B}[*] Fetching latest version from GitHub...{R}")
     remote_tag = fetch_latest_tag()
     remote_ver = remote_tag.lstrip("v") if remote_tag else None
@@ -755,3 +735,56 @@ def run_cli():
 
 if __name__ == "__main__":
     run_cli()
+
+
+
+def load_package(pkg_dir: Path) -> dict:
+    raw_list = load_packages_from_local(pkg_dir.parent)
+    build = pkg_dir / "build.sh"
+    if not build.exists():
+        return {
+            "name": pkg_dir.name,
+            "desc": "-",
+            "version": "?",
+            "deps": "-",
+            "maintainer": "-",
+            "homepage": "-",
+            "license": "-",
+        }
+    data = {
+        "name": pkg_dir.name,
+        "desc": "-",
+        "version": "?",
+        "deps": "-",
+        "maintainer": "-",
+        "homepage": "-",
+        "license": "-",
+    }
+    with build.open(errors="ignore") as f:
+        for line in f:
+            for key, field in [
+                ("TERMUX_PKG_DESCRIPTION=", "desc"),
+                ("TERMUX_PKG_VERSION=",     "version"),
+                ("TERMUX_PKG_MAINTAINER=",  "maintainer"),
+                ("TERMUX_PKG_HOMEPAGE=",    "homepage"),
+                ("TERMUX_PKG_LICENSE=",     "license"),
+            ]:
+                if line.startswith(key):
+                    data[field] = line.split("=", 1)[1].strip().strip('"')
+            if line.startswith("TERMUX_PKG_DEPENDS="):
+                data["deps"] = line.split("=", 1)[1].strip().strip('"')
+    return data
+
+
+def load_all_packages(packages_dir: Path) -> list:
+    pkgs = []
+    if not packages_dir.exists():
+        return pkgs
+    for pkg_dir in sorted(packages_dir.iterdir()):
+        if not pkg_dir.is_dir():
+            continue
+        build = pkg_dir / "build.sh"
+        if not build.exists():
+            continue
+        pkgs.append(load_package(pkg_dir))
+    return pkgs
