@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import asyncio
 import subprocess
 import time
@@ -24,8 +23,8 @@ try:
     from textual.containers import Horizontal, Vertical, VerticalScroll, Center
     _TEXTUAL_AVAILABLE = True
 except ImportError:
-    App = object  # type: ignore
-    ComposeResult = None  # type: ignore
+    App = object
+    ComposeResult = None
     _TEXTUAL_AVAILABLE = False
 
     class _Stub:
@@ -166,48 +165,40 @@ def resolve_app_root() -> Path:
         "export TERMUX_APP_STORE_HOME=/path/to/termux-app-store"
     )
 
-def _http_get(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store"})
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        return resp.read()
-
-
-def _fetch_index() -> list:
-    import sys as _sys
-    _mod = _sys.modules[__name__]
+def fetch_index() -> list:
+    """Fetch index.json dari GitHub, return list packages atau [] jika gagal."""
     try:
-        raw = _mod._http_get(INDEX_URL)
-        data = json.loads(raw.decode())
-        pkgs = data.get("packages", [])
-        try:
-            INDEX_CACHE.parent.mkdir(parents=True, exist_ok=True)
-            INDEX_CACHE.write_text(json.dumps(data, indent=2))
-        except Exception:
-            pass
-        return pkgs
+        req = urllib.request.Request(
+            INDEX_URL,
+            headers={"User-Agent": "termux-app-store"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+            pkgs = data.get("packages", [])
+            try:
+                INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
+            except Exception:
+                pass
+            return pkgs
     except Exception:
-        try:
-            if INDEX_CACHE.exists():
-                data = json.loads(INDEX_CACHE.read_text())
-                return data.get("packages", [])
-        except Exception:
-            pass
         return []
 
-fetch_index = _fetch_index
-fetch_index_from_github = _fetch_index
+fetch_index_from_github = fetch_index
 
 
 def load_index_cache() -> list:
+    """Baca index.json dari cache lokal."""
     try:
-        if INDEX_CACHE.exists():
-            data = json.loads(INDEX_CACHE.read_text())
+        if INDEX_CACHE_FILE.exists():
+            data = json.loads(INDEX_CACHE_FILE.read_text())
             return data.get("packages", [])
     except Exception:
         pass
     return []
 
 def load_packages_from_local(packages_dir: Path) -> list:
+    """Fallback: baca dari packages/*/build.sh lokal."""
     pkgs = []
     if not packages_dir.exists():
         return pkgs
@@ -237,6 +228,11 @@ def load_packages_from_local(packages_dir: Path) -> list:
     return pkgs
 
 def ensure_package_files(name: str) -> bool:
+    """
+    Pastikan packages/<name>/build.sh ada di PACKAGES_DIR.
+    Jika sudah ada → return True langsung.
+    Jika tidak ada → coba download dari GitHub raw → return True/False.
+    """
     pkg_dir = PACKAGES_DIR / name
     build_sh = pkg_dir / "build.sh"
 
@@ -260,20 +256,34 @@ def ensure_package_files(name: str) -> bool:
 
 
 def normalize_pkg(raw: dict) -> dict:
-    deps = raw.get("depends", [])
-    if isinstance(deps, str):
-        deps = [d.strip() for d in deps.split(",") if d.strip()]
+    """Normalize index.json entry ke format internal yang konsisten.
+    deps disimpan sebagai string comma-separated (e.g. "nodejs,python")
+    agar kompatibel dengan format build.sh dan test expectations.
+    """
+    deps = raw.get("depends", raw.get("deps", "-"))
+    if isinstance(deps, list):
+        deps = ",".join(deps) if deps else "-"
+    elif not deps:
+        deps = "-"
     return {
         "name":       raw.get("package", raw.get("name", "?")),
         "desc":       raw.get("description", raw.get("desc", "-")),
         "version":    raw.get("version", "?"),
         "deps":       deps,
         "maintainer": raw.get("maintainer", "-"),
+        "homepage":   raw.get("homepage", "-"),
+        "license":    raw.get("license", "-"),
     }
 
 def get_packages(packages_dir: Path, online: bool = True) -> list:
+    """
+    Ambil daftar packages dengan prioritas:
+    1. GitHub index.json (online, fresh)
+    2. Cache index.json lokal
+    3. Fallback baca packages/ lokal
+    """
     if online:
-        raw = _fetch_index()
+        raw = fetch_index_from_github()
         if raw:
             return [normalize_pkg(p) for p in raw]
 
@@ -302,7 +312,7 @@ class PackageItem(ListItem):
 try:
     from textual.screen import ModalScreen as _ModalScreen
 except ImportError:
-    _ModalScreen = object  # type: ignore
+    _ModalScreen = object
 
 class ConfirmUninstall(_ModalScreen):
 
@@ -310,39 +320,31 @@ class ConfirmUninstall(_ModalScreen):
     ConfirmUninstall {
         align: center middle;
     }
-    #dialog {
         width: 60;
         height: auto;
-        border: heavy #ff5555;
-        background: #282a36;
+        border: heavy
+        background:
         padding: 2 4;
     }
-    #dialog-title {
         text-align: center;
-        color: #ff5555;
+        color:
         text-style: bold;
         margin-bottom: 1;
     }
-    #dialog-msg {
         text-align: center;
-        color: #f8f8f2;
+        color:
         margin-bottom: 2;
     }
-    #dialog-btns {
         align: center middle;
         height: auto;
     }
-    #btn-cancel {
         margin-right: 2;
-        background: #44475a;
-        color: #f8f8f2;
+        background:
+        color:
     }
-    #btn-cancel:hover { background: #6272a4; }
-    #btn-confirm-uninstall {
-        background: #ff5555;
-        color: #f8f8f2;
+        background:
+        color:
     }
-    #btn-confirm-uninstall:hover { background: #ff6e6e; }
     """
 
     def __init__(self, package_name: str):
@@ -370,20 +372,9 @@ class ConfirmUninstall(_ModalScreen):
 class TermuxAppStore(App):
 
     CSS = """
-    Screen { background: #282a36; color: #f8f8f2; }
-    #body { layout: horizontal; height: 1fr; }
-    #left { width: 35%; border: heavy #6272a4; padding: 1; }
-    #right { width: 65%; border: heavy #6272a4; padding: 1; }
-    ListItem.-highlight { background: #44475a; color: #50fa7b; }
+    Screen { background:
+    ListItem.-highlight { background:
     ProgressBar { height: 1; }
-    #footer { height: 1; content-align: center middle; color: #6272a4; }
-    #log-scroll { height: 1fr; border: solid #6272a4; }
-    #btn-row { height: auto; margin-top: 1; }
-    #install { margin-right: 1; }
-    #uninstall { background: #ff5555; color: #f8f8f2; display: none; }
-    #uninstall:hover { background: #ff6e6e; }
-    #uninstall:disabled { background: #44475a; color: #6272a4; }
-    #status-bar { height: 1; content-align: left middle; color: #6272a4; padding-left: 1; }
     """
 
     def on_mount(self): # pragma: no cover
@@ -433,8 +424,11 @@ class TermuxAppStore(App):
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
     def load_packages(self, online: bool = True):
-        import sys as _sys
-        raw = _sys.modules[__name__]._fetch_index() if online else []
+        """
+        Load packages via fetch_index() — testable karena bisa di-mock.
+        Prioritas: fetch_index() → load_index_cache() → PACKAGES_DIR lokal.
+        """
+        raw = fetch_index() if online else []
         if raw:
             self.packages = [normalize_pkg(p) for p in raw]
         else:
@@ -500,11 +494,13 @@ class TermuxAppStore(App):
             badge = "[red]NOT INSTALLED[/red]"
             ver_line = f"Version    : {p['version']}"
 
-        deps = p.get("deps", [])
-        if isinstance(deps, list):
-            deps_str = "\n".join(f"• {d}" for d in deps) if deps else "-"
+        deps_raw = p.get("deps", "-")
+        if isinstance(deps_raw, list):
+            deps_str = "\n".join(f"• {d}" for d in deps_raw) if deps_raw else "-"
+        elif deps_raw and deps_raw != "-":
+            deps_str = "\n".join(f"• {d.strip()}" for d in deps_raw.split(",") if d.strip())
         else:
-            deps_str = "\n".join(f"• {d.strip()}" for d in deps.split(",") if d.strip()) if deps != "-" else "-"
+            deps_str = "-"
 
         self.info.update(
             f"[b]{p['name']}[/b]  {badge}\n\n"
@@ -555,7 +551,7 @@ class TermuxAppStore(App):
         self.call_from_thread(lambda: self.update_log(f"Installing {name}...\n"))
 
         if not ensure_package_files(name):
-            self.call_from_thread(lambda: self.update_log(f"Failed to download build files for {name}."))
+            self.update_log(f"\n✗ Could not fetch build files for {name}.")
             self.installing = False
             self.call_from_thread(lambda: setattr(self.install_btn, "disabled", False))
             self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
@@ -644,6 +640,8 @@ class TermuxAppStore(App):
             self.log_buffer = self.log_buffer[-500:]
         self.log_view.update("\n".join(self.log_buffer))
         self.log_container.scroll_end(animate=False)
+
+_fetch_index = fetch_index
 
 
 def run_tui():
