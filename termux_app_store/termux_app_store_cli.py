@@ -333,7 +333,7 @@ def cleanup_package_files(name: str) -> int:
 
 def cmd_list(packages_dir: Path):
     print(f"\n{DIM}[*] Loading package list...{R}")
-    pkgs = get_packages(packages_dir, online=True)
+    pkgs = load_all_packages(packages_dir)
     if not pkgs:
         print(f"{YELLOW}[!] No packages found.{R}")
         return
@@ -349,7 +349,7 @@ def cmd_list(packages_dir: Path):
 
 
 def cmd_show(packages_dir: Path, name: str):
-    pkgs = get_packages(packages_dir, online=True)
+    pkgs = load_all_packages(packages_dir)
     p = next((x for x in pkgs if x["name"] == name), None)
 
     if not p:
@@ -381,12 +381,8 @@ def cmd_show(packages_dir: Path, name: str):
 
 
 def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False) -> bool:
-    pkgs = get_packages(packages_dir, online=False)
+    pkgs = load_all_packages(packages_dir)
     p = next((x for x in pkgs if x["name"] == name), None)
-
-    if not p:
-        pkgs = get_packages(packages_dir, online=True)
-        p = next((x for x in pkgs if x["name"] == name), None)
 
     if not p:
         print(f"{RED}[!] Package '{name}' not found.{R}")
@@ -520,7 +516,7 @@ def cmd_update(packages_dir: Path):
 
 
 def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
-    pkgs = get_packages(packages_dir, online=True)
+    pkgs = load_all_packages(packages_dir)
 
     if target:
         p = next((x for x in pkgs if x["name"] == target), None)
@@ -744,11 +740,16 @@ if __name__ == "__main__":
 INDEX_CACHE  = INDEX_CACHE_FILE
 
 def load_package(pkg_dir: Path) -> dict:
-    raw_list = load_packages_from_local(pkg_dir.parent)
+    name = pkg_dir.name
+    raw_index = fetch_index()
+    if raw_index:
+        match = next((p for p in raw_index if p.get("package") == name), None)
+        if match:
+            return normalize_pkg(match)
     build = pkg_dir / "build.sh"
     if not build.exists():
         return {
-            "name": pkg_dir.name,
+            "name": name,
             "desc": "-",
             "version": "?",
             "deps": "-",
@@ -757,7 +758,7 @@ def load_package(pkg_dir: Path) -> dict:
             "license": "-",
         }
     data = {
-        "name": pkg_dir.name,
+        "name": name,
         "desc": "-",
         "version": "?",
         "deps": "-",
@@ -782,14 +783,16 @@ def load_package(pkg_dir: Path) -> dict:
 
 
 def load_all_packages(packages_dir: Path) -> list:
+    raw_index = fetch_index()
+    if raw_index:
+        return [normalize_pkg(p) for p in raw_index]
     pkgs = []
     if not packages_dir.exists():
         return pkgs
     for pkg_dir in sorted(packages_dir.iterdir()):
         if not pkg_dir.is_dir():
             continue
-        build = pkg_dir / "build.sh"
-        if not build.exists():
+        if not (pkg_dir / "build.sh").exists():
             continue
         pkgs.append(load_package(pkg_dir))
     return pkgs
