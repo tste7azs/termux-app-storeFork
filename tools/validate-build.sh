@@ -105,7 +105,7 @@ elif [[ -n "$SRCURL" ]]; then
             echo -e "${BOLD_RED}❌ Failed to download source${RESET}"
             echo -e "   URL      : $SRCURL"
             echo -e "   Exit code: $HTTP_CODE"
-            echo -e "   ${BOLD_YELLOW}Hint: Pastikan URL di TERMUX_PKG_SRCURL valid dan file/url dapat diakses publik${RESET}"
+            echo -e "   ${BOLD_YELLOW}\nHint:\n Make sure the URL in TERMUX_PKG_SRCURL is valid and the file/url is publicly accessible.${RESET}"
             rm -f "$TMPFILE"
             FAIL=1
             HTTP_CODE=""
@@ -120,7 +120,7 @@ elif [[ -n "$SRCURL" ]]; then
         FILE_SIZE=$(wc -c < "$TMPFILE")
         if [[ "$FILE_SIZE" -eq 0 ]]; then
             echo -e "${BOLD_RED}❌ Downloaded file is empty (0 bytes)${RESET}"
-            echo -e "   ${BOLD_YELLOW}Hint: URL mungkin redirect ke halaman error atau file tidak ada${RESET}"
+            echo -e "   ${BOLD_YELLOW}\nHint:\n The URL may redirect to an error page or a non-existent file${RESET}"
             rm -f "$TMPFILE"
             FAIL=1
         else
@@ -132,7 +132,7 @@ elif [[ -n "$SRCURL" ]]; then
                 echo -e "   Expected: ${BOLD_YELLOW}$EXPECTED_SHA${RESET}"
                 echo -e "   Got     : ${BOLD_YELLOW}$ACTUAL_SHA${RESET}"
                 echo -e "   Size    : ${FILE_SIZE} bytes"
-                echo -e "   ${BOLD_YELLOW}Hint: Update TERMUX_PKG_SHA256 di build.sh dengan nilai 'Got' di atas${RESET}"
+                echo -e "   ${BOLD_YELLOW}\nHint:\n Update TERMUX_PKG_SHA256 in build.sh with the 'Got' value above${RESET}"
                 FAIL=1
             else
                 echo -e "${BOLD_GREEN}✅ SHA256 verified${RESET} (${FILE_SIZE} bytes)"
