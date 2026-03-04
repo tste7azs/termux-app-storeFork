@@ -43,15 +43,15 @@ CACHE_FILE = (
     / "path.json"
 )
 
-INDEX_CACHE = (
+INDEX_CACHE_FILE = (
     Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
     / "termux-app-store"
     / "index.json"
 )
 
+FINGERPRINT_STRING = "Termux App Store Official"
 GITHUB_REPO        = "djunekz/termux-app-store"
 INDEX_URL          = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/tools/index.json"
-FINGERPRINT_STRING = "Termux App Store Official"
 
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mGKHf]')
 
@@ -106,8 +106,8 @@ def has_store_fingerprint(path: Path) -> bool:
                     break
                 if FINGERPRINT_STRING in line:
                     return True
-    except Exception:  # pragma: no cover
-        pass            # pragma: no cover
+    except Exception: # pragma: no cover
+        pass # pragma: no cover
     return False
 
 def is_valid_root(path: Path) -> bool:
@@ -132,7 +132,9 @@ def load_cached_root():
 def save_cached_root(path: Path):
     try:
         CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        CACHE_FILE.write_text(json.dumps({"app_root": str(path)}, indent=2))
+        CACHE_FILE.write_text(
+            json.dumps({"app_root": str(path)}, indent=2)
+        )
     except Exception:
         pass
 
@@ -162,50 +164,103 @@ def resolve_app_root() -> Path:
         "export TERMUX_APP_STORE_HOME=/path/to/termux-app-store"
     )
 
-APP_ROOT     = resolve_app_root()
-PACKAGES_DIR = APP_ROOT / "packages"
-ROOT_DIR     = APP_ROOT
-
-
-def _fetch_index() -> list:
+def fetch_index_from_github() -> list:
+    """Fetch index.json dari GitHub, return list packages atau [] jika gagal."""
     try:
         req = urllib.request.Request(
             INDEX_URL,
-            headers={"User-Agent": "termux-app-store-tui"},
+            headers={"User-Agent": "termux-app-store"},
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
-            INDEX_CACHE.parent.mkdir(parents=True, exist_ok=True)
-            INDEX_CACHE.write_text(json.dumps(data, indent=2))
+            pkgs = data.get("packages", [])
+            # Simpan ke cache
+            try:
+                INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
+            except Exception:
+                pass
+            return pkgs
+    except Exception:
+        return []
+
+def load_index_cache() -> list:
+    """Baca index.json dari cache lokal."""
+    try:
+        if INDEX_CACHE_FILE.exists():
+            data = json.loads(INDEX_CACHE_FILE.read_text())
             return data.get("packages", [])
     except Exception:
         pass
-
-    if INDEX_CACHE.exists():
-        try:
-            data = json.loads(INDEX_CACHE.read_text())
-            return data.get("packages", [])
-        except Exception:
-            pass
-
     return []
 
+def load_packages_from_local(packages_dir: Path) -> list:
+    """Fallback: baca dari packages/*/build.sh lokal."""
+    pkgs = []
+    if not packages_dir.exists():
+        return pkgs
+    for pkg_dir in sorted(packages_dir.iterdir()):
+        build = pkg_dir / "build.sh"
+        if not build.exists():
+            continue
+        data = {
+            "package": pkg_dir.name,
+            "description": "-",
+            "version": "?",
+            "depends": [],
+            "maintainer": "-",
+        }
+        with build.open(errors="ignore") as f:
+            for line in f:
+                if line.startswith("TERMUX_PKG_DESCRIPTION="):
+                    data["description"] = line.split("=", 1)[1].strip().strip('"')
+                elif line.startswith("TERMUX_PKG_VERSION="):
+                    data["version"] = line.split("=", 1)[1].strip().strip('"')
+                elif line.startswith("TERMUX_PKG_DEPENDS="):
+                    deps_str = line.split("=", 1)[1].strip().strip('"')
+                    data["depends"] = [d.strip() for d in deps_str.split(",") if d.strip()]
+                elif line.startswith("TERMUX_PKG_MAINTAINER="):
+                    data["maintainer"] = line.split("=", 1)[1].strip().strip('"')
+        pkgs.append(data)
+    return pkgs
 
-def ensure_package_files(name: str) -> bool:
-    build_sh = PACKAGES_DIR / name / "build.sh"
-    if build_sh.exists():
-        return True
+def normalize_pkg(raw: dict) -> dict:
+    """Normalize index.json entry ke format internal yang konsisten."""
+    deps = raw.get("depends", [])
+    if isinstance(deps, str):
+        deps = [d.strip() for d in deps.split(",") if d.strip()]
+    return {
+        "name":       raw.get("package", raw.get("name", "?")),
+        "desc":       raw.get("description", raw.get("desc", "-")),
+        "version":    raw.get("version", "?"),
+        "deps":       deps,
+        "maintainer": raw.get("maintainer", "-"),
+    }
 
-    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/packages/{name}/build.sh"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-tui"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            content = resp.read()
-        build_sh.parent.mkdir(parents=True, exist_ok=True)
-        build_sh.write_bytes(content)
-        return True
-    except Exception as e:
-        return False
+def get_packages(packages_dir: Path, online: bool = True) -> list:
+    """
+    Ambil daftar packages dengan prioritas:
+    1. GitHub index.json (online, fresh)
+    2. Cache index.json lokal
+    3. Fallback baca packages/ lokal
+    """
+    if online:
+        raw = fetch_index_from_github()
+        if raw:
+            return [normalize_pkg(p) for p in raw]
+
+    cached = load_index_cache()
+    if cached:
+        return [normalize_pkg(p) for p in cached]
+
+    # Fallback lokal
+    raw = load_packages_from_local(packages_dir)
+    return [normalize_pkg(p) for p in raw]
+
+
+APP_ROOT     = resolve_app_root()
+PACKAGES_DIR = APP_ROOT / "packages"
+ROOT_DIR     = APP_ROOT
 
 
 class PackageItem(ListItem):
@@ -267,7 +322,7 @@ class ConfirmUninstall(_ModalScreen):
         super().__init__()
         self.package_name = package_name
 
-    def compose(self) -> ComposeResult:  # pragma: no cover
+    def compose(self) -> ComposeResult: # pragma: no cover
         with Vertical(id="dialog"):
             yield Static("⚠  Confirm Uninstall", id="dialog-title")
             yield Static(
@@ -278,7 +333,7 @@ class ConfirmUninstall(_ModalScreen):
                 yield Button("Cancel", id="btn-cancel")
                 yield Button("Uninstall", id="btn-confirm-uninstall")
 
-    def on_button_pressed(self, event) -> None:  # pragma: no cover
+    def on_button_pressed(self, event) -> None: # pragma: no cover
         if event.button.id == "btn-cancel":
             self.dismiss(False)
         elif event.button.id == "btn-confirm-uninstall":
@@ -301,9 +356,10 @@ class TermuxAppStore(App):
     #uninstall { background: #ff5555; color: #f8f8f2; display: none; }
     #uninstall:hover { background: #ff6e6e; }
     #uninstall:disabled { background: #44475a; color: #6272a4; }
+    #status-bar { height: 1; content-align: left middle; color: #6272a4; padding-left: 1; }
     """
 
-    def on_mount(self):  # pragma: no cover
+    def on_mount(self): # pragma: no cover
         self.packages = []
         self.status_cache = {}
         self.search_query = ""
@@ -314,10 +370,11 @@ class TermuxAppStore(App):
 
         self.set_interval(0.1, self.consume_worker_queue)
 
-        self.load_packages()
+        # Load packages: coba online dulu, fallback ke cache/lokal
+        self.load_packages(online=True)
         self.refresh_list()
 
-    def compose(self) -> ComposeResult:  # pragma: no cover
+    def compose(self) -> ComposeResult: # pragma: no cover
         yield Header(show_clock=True)
         yield Input(placeholder="Search package...", id="search")
 
@@ -345,57 +402,20 @@ class TermuxAppStore(App):
                     self.uninstall_btn.display = False
                     yield self.uninstall_btn
 
+        self.status_bar = Static("", id="status-bar")
+        yield self.status_bar
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
-    def load_packages(self):
-        self.packages.clear()
-
-        entries = _fetch_index()
-        if entries:
-            for p in entries:
-                deps_raw = p.get("depends", [])
-                deps = ", ".join(deps_raw) if deps_raw else "-"
-                self.packages.append({
-                    "name":       p.get("package", ""),
-                    "desc":       p.get("description", "-"),
-                    "version":    p.get("version", "?"),
-                    "deps":       deps,
-                    "maintainer": p.get("maintainer", "-"),
-                })
-            return
-
-        for pkg_dir in sorted(PACKAGES_DIR.iterdir()):
-            build = pkg_dir / "build.sh"
-            if not build.exists():
-                continue
-
-            data = {
-                "name":       pkg_dir.name,
-                "desc":       "-",
-                "version":    "?",
-                "deps":       "-",
-                "maintainer": "-",
-            }
-
-            with build.open(errors="ignore") as f:
-                for line in f:
-                    if line.startswith("TERMUX_PKG_DESCRIPTION="):
-                        data["desc"] = line.split("=", 1)[1].strip().strip('"')
-                    elif line.startswith("TERMUX_PKG_VERSION="):
-                        data["version"] = line.split("=", 1)[1].strip().strip('"')
-                    elif line.startswith("TERMUX_PKG_DEPENDS="):
-                        data["deps"] = line.split("=", 1)[1].strip().strip('"')
-                    elif line.startswith("TERMUX_PKG_MAINTAINER="):
-                        data["maintainer"] = line.split("=", 1)[1].strip().strip('"')
-
-            self.packages.append(data)
+    def load_packages(self, online: bool = False):
+        self.packages = get_packages(PACKAGES_DIR, online=online)
+        self.status_cache.clear()
 
     def refresh_list(self):
         self.list_view.clear()
         q = self.search_query
 
         for pkg in self.packages:
-            if q == "" or q in pkg["name"]:
+            if q == "" or q in pkg["name"].lower() or q in pkg["desc"].lower():
                 self.list_view.append(PackageItem(pkg))
 
         if self.list_view.children:
@@ -443,17 +463,17 @@ class TermuxAppStore(App):
             badge = "[red]NOT INSTALLED[/red]"
             ver_line = f"Version    : {p['version']}"
 
-        deps = (
-            "\n".join(f"• {d.strip()}" for d in p["deps"].split(","))
-            if p["deps"] != "-"
-            else "-"
-        )
+        deps = p.get("deps", [])
+        if isinstance(deps, list):
+            deps_str = "\n".join(f"• {d}" for d in deps) if deps else "-"
+        else:
+            deps_str = "\n".join(f"• {d.strip()}" for d in deps.split(",") if d.strip()) if deps != "-" else "-"
 
         self.info.update(
             f"[b]{p['name']}[/b]  {badge}\n\n"
             f"{ver_line}\n"
             f"Maintainer : {p['maintainer']}\n\n"
-            f"[b]Dependencies[/b]\n{deps}\n\n"
+            f"[b]Dependencies[/b]\n{deps_str}\n\n"
             f"{p['desc']}"
         )
 
@@ -473,7 +493,7 @@ class TermuxAppStore(App):
 
         elif event.button.id == "uninstall" and self.current_item:
             name = self.current_item.pkg["name"]
-            def handle_confirm(confirmed: bool) -> None:  # pragma: no cover
+            def handle_confirm(confirmed: bool) -> None: # pragma: no cover
                 if confirmed:
                     asyncio.get_event_loop().call_soon_threadsafe(
                         lambda: self.worker_queue.put_nowait(("uninstall", name))
@@ -496,15 +516,6 @@ class TermuxAppStore(App):
         self.log_buffer.clear()
         self.call_from_thread(lambda: setattr(self.progress, "progress", 0))
         self.call_from_thread(lambda: self.update_log(f"Installing {name}...\n"))
-
-        if not ensure_package_files(name):
-            self.call_from_thread(lambda: self.update_log(
-                f"\n✗ Failed to download build.sh for '{name}'. Check your internet connection."
-            ))
-            self.installing = False
-            self.call_from_thread(lambda: setattr(self.install_btn, "disabled", False))
-            self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
-            return
 
         proc = subprocess.Popen(
             ["bash", "build-package.sh", name],
@@ -530,7 +541,7 @@ class TermuxAppStore(App):
 
         self.installing = False
         self.status_cache.clear()
-        self.load_packages()
+        self.load_packages(online=False)
 
         def _finalize_install():
             self.install_btn.disabled = False
@@ -574,7 +585,7 @@ class TermuxAppStore(App):
 
         self.installing = False
         self.status_cache.clear()
-        self.load_packages()
+        self.load_packages(online=False)
 
         def _finalize_uninstall():
             self.install_btn.disabled = False
@@ -590,9 +601,8 @@ class TermuxAppStore(App):
         self.log_view.update("\n".join(self.log_buffer))
         self.log_container.scroll_end(animate=False)
 
-
 def run_tui():
     TermuxAppStore().run()
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__": # pragma: no cover
     run_tui()

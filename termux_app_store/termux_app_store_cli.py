@@ -8,10 +8,10 @@ USAGE:
   termux-app-store install | i | -i    Install a package
   termux-app-store uninstall           Uninstall a package
   termux-app-store show                Show package details
-  termux-app-store update              Check for available updates (no install)
+  termux-app-store update              Sync index.json terbaru + tampilkan yang ada update
   termux-app-store upgrade             Upgrade all outdated packages
   termux-app-store upgrade <pkg>       Upgrade a specific package
-  termux-app-store version | -v        Show app version (from GitHub tag)
+  termux-app-store version | -v        Show app version
   termux-app-store help | -h | --help  Show help
 """
 
@@ -31,7 +31,7 @@ CACHE_FILE = (
     / "path.json"
 )
 
-INDEX_CACHE = (
+INDEX_CACHE_FILE = (
     Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
     / "termux-app-store"
     / "index.json"
@@ -89,8 +89,8 @@ def has_store_fingerprint(path: Path) -> bool:
                     break
                 if FINGERPRINT_STRING in line:
                     return True
-    except Exception:
-        pass
+    except Exception: # pragma: no cover
+        pass # pragma: no cover
     return False
 
 
@@ -150,126 +150,113 @@ def resolve_app_root() -> Path:
     sys.exit(1)
 
 
-def fetch_index() -> list:
-    """Fetch index.json dari GitHub remote, fallback ke cache lokal jika offline."""
+# ── Index / Package loading ────────────────────────────────────────────────
+
+def fetch_index_from_github() -> list:
+    """Fetch index.json dari GitHub raw. Return list packages atau []."""
     try:
         req = urllib.request.Request(
             INDEX_URL,
             headers={"User-Agent": "termux-app-store-cli"},
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
-            INDEX_CACHE.parent.mkdir(parents=True, exist_ok=True)
-            INDEX_CACHE.write_text(json.dumps(data, indent=2))
+            pkgs = data.get("packages", [])
+            # Simpan ke cache lokal
+            try:
+                INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
+            except Exception:
+                pass
+            return pkgs
+    except Exception:
+        return []
+
+
+def load_index_cache() -> list:
+    """Baca index.json dari cache lokal."""
+    try:
+        if INDEX_CACHE_FILE.exists():
+            data = json.loads(INDEX_CACHE_FILE.read_text())
             return data.get("packages", [])
     except Exception:
         pass
-
-    if INDEX_CACHE.exists():
-        try:
-            data = json.loads(INDEX_CACHE.read_text())
-            print(f"{YELLOW}[!] Offline mode: using cached index.{R}")
-            return data.get("packages", [])
-        except Exception:
-            pass
-
-    print(f"{RED}[!] Cannot fetch package index. Check your internet connection.{R}")
     return []
 
 
-def _index_entry_to_pkg(p: dict) -> dict:
-    """Konversi entry index.json ke format internal yang dipakai CLI."""
-    deps_raw = p.get("depends", [])
-    deps = ", ".join(deps_raw) if deps_raw else "-"
-    return {
-        "name":       p.get("package", ""),
-        "desc":       p.get("description", "-"),
-        "version":    p.get("version", "?"),
-        "deps":       deps,
-        "maintainer": p.get("maintainer", "-"),
-        "homepage":   p.get("homepage", "-"),
-        "license":    p.get("license", "-"),
-    }
-
-
-def _load_package_local(pkg_dir: Path) -> dict:
-    """Fallback: baca langsung dari build.sh lokal."""
-    data = {
-        "name":       pkg_dir.name,
-        "desc":       "-",
-        "version":    "?",
-        "deps":       "-",
-        "maintainer": "-",
-        "homepage":   "-",
-        "license":    "-",
-    }
-    build = pkg_dir / "build.sh"
-    if not build.exists():
-        return data
-    with build.open(errors="ignore") as f:
-        for line in f:
-            for key, field in [
-                ("TERMUX_PKG_DESCRIPTION=", "desc"),
-                ("TERMUX_PKG_VERSION=",     "version"),
-                ("TERMUX_PKG_DEPENDS=",     "deps"),
-                ("TERMUX_PKG_MAINTAINER=",  "maintainer"),
-                ("TERMUX_PKG_HOMEPAGE=",    "homepage"),
-                ("TERMUX_PKG_LICENSE=",     "license"),
-            ]:
-                if line.startswith(key):
-                    data[field] = line.split("=", 1)[1].strip().strip('"')
-    return data
-
-
-def load_package(pkg_dir: Path) -> dict:
-    """Load satu package dari index.json remote, fallback ke build.sh lokal."""
-    name = pkg_dir.name
-    entries = fetch_index()
-    for p in entries:
-        if p.get("package") == name:
-            return _index_entry_to_pkg(p)
-    return _load_package_local(pkg_dir)
-
-
-def load_all_packages(packages_dir: Path) -> list:
-    """Load semua packages dari index.json remote (bukan scan lokal)."""
-    entries = fetch_index()
-    if entries:
-        return [_index_entry_to_pkg(p) for p in entries]
-    # Fallback ke scan lokal jika index kosong
+def load_packages_from_local(packages_dir: Path) -> list:
+    """Fallback: baca dari packages/*/build.sh lokal."""
     pkgs = []
+    if not packages_dir.exists():
+        return pkgs
     for pkg_dir in sorted(packages_dir.iterdir()):
-        if (pkg_dir / "build.sh").exists():
-            pkgs.append(_load_package_local(pkg_dir))
+        build = pkg_dir / "build.sh"
+        if not build.exists():
+            continue
+        data = {
+            "package": pkg_dir.name,
+            "description": "-",
+            "version": "?",
+            "depends": [],
+            "maintainer": "-",
+            "homepage": "-",
+            "license": "-",
+        }
+        with build.open(errors="ignore") as f:
+            for line in f:
+                for key, field in [
+                    ("TERMUX_PKG_DESCRIPTION=", "description"),
+                    ("TERMUX_PKG_VERSION=",     "version"),
+                    ("TERMUX_PKG_MAINTAINER=",  "maintainer"),
+                    ("TERMUX_PKG_HOMEPAGE=",    "homepage"),
+                    ("TERMUX_PKG_LICENSE=",     "license"),
+                ]:
+                    if line.startswith(key):
+                        data[field] = line.split("=", 1)[1].strip().strip('"')
+                if line.startswith("TERMUX_PKG_DEPENDS="):
+                    deps_str = line.split("=", 1)[1].strip().strip('"')
+                    data["depends"] = [d.strip() for d in deps_str.split(",") if d.strip()]
+        pkgs.append(data)
     return pkgs
 
 
-def package_exists(packages_dir: Path, name: str) -> bool:
-    """Cek apakah package ada di remote index atau di lokal packages dir."""
-    entries = fetch_index()
-    if any(p.get("package") == name for p in entries):
-        return True
-    return (packages_dir / name / "build.sh").exists()
+def normalize_pkg(raw: dict) -> dict:
+    """Normalize ke format internal."""
+    deps = raw.get("depends", [])
+    if isinstance(deps, str):
+        deps = [d.strip() for d in deps.split(",") if d.strip()]
+    return {
+        "name":       raw.get("package", raw.get("name", "?")),
+        "desc":       raw.get("description", raw.get("desc", "-")),
+        "version":    raw.get("version", "?"),
+        "deps":       deps,
+        "maintainer": raw.get("maintainer", "-"),
+        "homepage":   raw.get("homepage", "-"),
+        "license":    raw.get("license", "-"),
+    }
 
 
-def ensure_package_files(packages_dir: Path, name: str) -> bool:
-    """Pastikan build.sh ada lokal. Kalau tidak ada, download dari GitHub."""
-    build_sh = packages_dir / name / "build.sh"
-    if build_sh.exists():
-        return True
+def get_packages(packages_dir: Path, online: bool = True) -> list:
+    """
+    Ambil daftar packages dengan prioritas:
+    1. GitHub index.json (online, selalu fresh)
+    2. Cache index.json lokal
+    3. Fallback baca packages/ lokal
+    """
+    if online:
+        raw = fetch_index_from_github()
+        if raw:
+            return [normalize_pkg(p) for p in raw]
 
-    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/packages/{name}/build.sh"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            content = resp.read()
-        build_sh.parent.mkdir(parents=True, exist_ok=True)
-        build_sh.write_bytes(content)
-        return True
-    except Exception as e:
-        print(f"{RED}[!] Failed to download build.sh for '{name}': {e}{R}")
-        return False
+    cached = load_index_cache()
+    if cached:
+        return [normalize_pkg(p) for p in cached]
 
+    raw = load_packages_from_local(packages_dir)
+    return [normalize_pkg(p) for p in raw]
+
+
+# ── Package status ─────────────────────────────────────────────────────────
 
 def get_installed_version(name: str):
     try:
@@ -292,7 +279,6 @@ def get_status(name: str, store_version: str):
     installed = get_installed_version(name)
     if installed is None:
         return "NOT INSTALLED", f"{RED}✗ not installed{R}"
-
     if is_installed_newer_or_equal(installed, store_version):
         return "INSTALLED", f"{GREEN}✔ up-to-date{R}       {DIM}{installed}{R}"
     else:
@@ -356,8 +342,11 @@ def cleanup_package_files(name: str) -> int:
     return removed_count
 
 
+# ── CLI Commands ───────────────────────────────────────────────────────────
+
 def cmd_list(packages_dir: Path):
-    pkgs = load_all_packages(packages_dir)
+    print(f"\n{DIM}[*] Loading package list...{R}")
+    pkgs = get_packages(packages_dir, online=True)
     if not pkgs:
         print(f"{YELLOW}[!] No packages found.{R}")
         return
@@ -373,14 +362,17 @@ def cmd_list(packages_dir: Path):
 
 
 def cmd_show(packages_dir: Path, name: str):
-    if not package_exists(packages_dir, name):
+    pkgs = get_packages(packages_dir, online=True)
+    p = next((x for x in pkgs if x["name"] == name), None)
+
+    if not p:
         print(f"{RED}[!] Package '{name}' not found.{R}")
         print(f"    Run {CYAN}termux-app-store list{R} to see available packages.")
         sys.exit(1)
 
-    pkg_dir = packages_dir / name
-    p = load_package(pkg_dir)
     _, label = get_status(p["name"], p["version"])
+    deps = p.get("deps", [])
+    deps_str = ", ".join(deps) if deps else "-"
 
     print(f"""
 {B}{CYAN}{'━'*42}{R}
@@ -390,22 +382,28 @@ def cmd_show(packages_dir: Path, name: str):
   {B}Description :{R} {p['desc']}
   {B}Version     :{R} {CYAN}{p['version']}{R}
   {B}Maintainer  :{R} {p['maintainer']}
-  {B}License     :{R} {p['license']}
-  {B}Homepage    :{R} {p['homepage']}
-  {B}Dependencies:{R} {YELLOW}{p['deps']}{R}
+  {B}License     :{R} {p.get('license', '-')}
+  {B}Homepage    :{R} {p.get('homepage', '-')}
+  {B}Dependencies:{R} {YELLOW}{deps_str}{R}
 
 {B}{CYAN}{'━'*42}{R}
 """)
 
 
 def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False) -> bool:
-    if not package_exists(packages_dir, name):
+    pkgs = get_packages(packages_dir, online=False)  # install pakai cache, tidak perlu fetch ulang
+    p = next((x for x in pkgs if x["name"] == name), None)
+
+    if not p:
+        # Coba online sekali lagi
+        pkgs = get_packages(packages_dir, online=True)
+        p = next((x for x in pkgs if x["name"] == name), None)
+
+    if not p:
         print(f"{RED}[!] Package '{name}' not found.{R}")
         print(f"    Run {CYAN}termux-app-store list{R} to see available packages.")
         sys.exit(1)
 
-    pkg_dir = packages_dir / name
-    p = load_package(pkg_dir)
     status, _ = get_status(name, p["version"])
 
     if status == "INSTALLED" and not silent:
@@ -413,10 +411,6 @@ def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = Fa
         return True
 
     print(f"\n{B}[*] Installing {CYAN}{name}{R}{B} v{p['version']}...{R}\n")
-
-    if not ensure_package_files(packages_dir, name):
-        print(f"{RED}[!] Cannot prepare package files for '{name}'.{R}")
-        return False
 
     proc = subprocess.Popen(
         ["bash", "build-package.sh", name],
@@ -490,11 +484,23 @@ def cmd_uninstall(name: str):
 
 
 def cmd_update(packages_dir: Path):
-    pkgs = load_all_packages(packages_dir)
+    """Sync index.json terbaru dari GitHub, lalu tampilkan package yang ada update."""
+    print(f"\n{B}[*] Syncing package index from GitHub...{R}")
+
+    raw = fetch_index_from_github()
+    if raw:
+        print(f"{GREEN}[✔] Index updated — {len(raw)} packages found.{R}\n")
+        pkgs = [normalize_pkg(p) for p in raw]
+    else:
+        print(f"{YELLOW}[!] Could not reach GitHub. Using cached index.{R}\n")
+        pkgs = get_packages(packages_dir, online=False)
+
+    if not pkgs:
+        print(f"{YELLOW}[!] No packages found.{R}")
+        return
+
     outdated = []
     installed_count = 0
-
-    print(f"\n{B}[*] Checking for updates...{R}\n")
 
     for p in pkgs:
         status, _ = get_status(p["name"], p["version"])
@@ -526,14 +532,14 @@ def cmd_update(packages_dir: Path):
 
 
 def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
-    pkgs = load_all_packages(packages_dir)
+    # Selalu fetch fresh saat upgrade
+    pkgs = get_packages(packages_dir, online=True)
 
     if target:
-        if not package_exists(packages_dir, target):
+        p = next((x for x in pkgs if x["name"] == target), None)
+        if not p:
             print(f"{RED}[!] Package '{target}' not found.{R}")
             sys.exit(1)
-        pkg_dir = packages_dir / target
-        p = load_package(pkg_dir)
         status, _ = get_status(target, p["version"])
         if status == "NOT INSTALLED":
             print(f"{YELLOW}[!] '{target}' is not installed.{R}")
@@ -631,6 +637,7 @@ def cmd_version():
         print(f"  {B}Latest   :{R} {YELLOW}(Could not fetch — check internet){R}")
         if local_ver:
             print(f"\n  {DIM}Cannot determine if update is available{R}")
+
     print()
 
 
@@ -648,7 +655,7 @@ def cmd_help():
   {CYAN}show{R} {B}<package>{R}              Show package details
 
 {B}UPDATE COMMANDS:{R}
-  {CYAN}update{R}                      Check which packages have updates
+  {CYAN}update{R}                      Sync index + check which packages have updates
   {CYAN}upgrade{R}                     Upgrade all outdated packages
   {CYAN}upgrade{R} {B}<package>{R}           Upgrade a specific package
 
