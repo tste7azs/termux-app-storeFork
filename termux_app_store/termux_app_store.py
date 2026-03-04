@@ -166,32 +166,42 @@ def resolve_app_root() -> Path:
         "export TERMUX_APP_STORE_HOME=/path/to/termux-app-store"
     )
 
-def fetch_index() -> list:
+def _http_get(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store"})
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        return resp.read()
+
+
+def _fetch_index() -> list:
+    import sys as _sys
+    _mod = _sys.modules[__name__]
     try:
-        req = urllib.request.Request(
-            INDEX_URL,
-            headers={"User-Agent": "termux-app-store"},
-        )
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode())
-            pkgs = data.get("packages", [])
-            try:
-                INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-                INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
-            except Exception:
-                pass
-            return pkgs
+        raw = _mod._http_get(INDEX_URL)
+        data = json.loads(raw.decode())
+        pkgs = data.get("packages", [])
+        try:
+            INDEX_CACHE.parent.mkdir(parents=True, exist_ok=True)
+            INDEX_CACHE.write_text(json.dumps(data, indent=2))
+        except Exception:
+            pass
+        return pkgs
     except Exception:
+        try:
+            if INDEX_CACHE.exists():
+                data = json.loads(INDEX_CACHE.read_text())
+                return data.get("packages", [])
+        except Exception:
+            pass
         return []
 
-_fetch_index = fetch_index
-fetch_index_from_github = fetch_index
+fetch_index = _fetch_index
+fetch_index_from_github = _fetch_index
 
 
 def load_index_cache() -> list:
     try:
-        if INDEX_CACHE_FILE.exists():
-            data = json.loads(INDEX_CACHE_FILE.read_text())
+        if INDEX_CACHE.exists():
+            data = json.loads(INDEX_CACHE.read_text())
             return data.get("packages", [])
     except Exception:
         pass
@@ -251,21 +261,19 @@ def ensure_package_files(name: str) -> bool:
 
 def normalize_pkg(raw: dict) -> dict:
     deps = raw.get("depends", [])
-    if isinstance(deps, list):
-        deps_str = ", ".join(deps) if deps else "-"
-    else:
-        deps_str = deps if deps else "-"
+    if isinstance(deps, str):
+        deps = [d.strip() for d in deps.split(",") if d.strip()]
     return {
         "name":       raw.get("package", raw.get("name", "?")),
         "desc":       raw.get("description", raw.get("desc", "-")),
         "version":    raw.get("version", "?"),
-        "deps":       deps_str,
+        "deps":       deps,
         "maintainer": raw.get("maintainer", "-"),
     }
 
 def get_packages(packages_dir: Path, online: bool = True) -> list:
     if online:
-        raw = fetch_index_from_github()
+        raw = _fetch_index()
         if raw:
             return [normalize_pkg(p) for p in raw]
 
@@ -425,8 +433,8 @@ class TermuxAppStore(App):
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
     def load_packages(self, online: bool = True):
-        import termux_app_store.termux_app_store as _self
-        raw = _self._fetch_index() if online else []
+        import sys as _sys
+        raw = _sys.modules[__name__]._fetch_index() if online else []
         if raw:
             self.packages = [normalize_pkg(p) for p in raw]
         else:
@@ -492,13 +500,11 @@ class TermuxAppStore(App):
             badge = "[red]NOT INSTALLED[/red]"
             ver_line = f"Version    : {p['version']}"
 
-        deps = p.get("deps", "-")
+        deps = p.get("deps", [])
         if isinstance(deps, list):
             deps_str = "\n".join(f"• {d}" for d in deps) if deps else "-"
-        elif isinstance(deps, str) and deps != "-":
-            deps_str = "\n".join(f"• {d.strip()}" for d in deps.split(",") if d.strip())
         else:
-            deps_str = "-"
+            deps_str = "\n".join(f"• {d.strip()}" for d in deps.split(",") if d.strip()) if deps != "-" else "-"
 
         self.info.update(
             f"[b]{p['name']}[/b]  {badge}\n\n"
