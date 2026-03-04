@@ -24,8 +24,8 @@ try:
     from textual.containers import Horizontal, Vertical, VerticalScroll, Center
     _TEXTUAL_AVAILABLE = True
 except ImportError:
-    App = object
-    ComposeResult = None
+    App = object  # type: ignore
+    ComposeResult = None  # type: ignore
     _TEXTUAL_AVAILABLE = False
 
     class _Stub:
@@ -175,22 +175,16 @@ def fetch_index() -> list:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
             pkgs = data.get("packages", [])
-
             try:
-                INDEX_CACHE.parent.mkdir(parents=True, exist_ok=True)
-                INDEX_CACHE.write_text(json.dumps(data, indent=2))
+                INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
             except Exception:
                 pass
             return pkgs
     except Exception:
-        try:
-            if INDEX_CACHE.exists():
-                data = json.loads(INDEX_CACHE.read_text())
-                return data.get("packages", [])
-        except Exception:
-            pass
         return []
 
+_fetch_index = fetch_index
 fetch_index_from_github = fetch_index
 
 
@@ -257,13 +251,15 @@ def ensure_package_files(name: str) -> bool:
 
 def normalize_pkg(raw: dict) -> dict:
     deps = raw.get("depends", [])
-    if isinstance(deps, str):
-        deps = [d.strip() for d in deps.split(",") if d.strip()]
+    if isinstance(deps, list):
+        deps_str = ", ".join(deps) if deps else "-"
+    else:
+        deps_str = deps if deps else "-"
     return {
         "name":       raw.get("package", raw.get("name", "?")),
         "desc":       raw.get("description", raw.get("desc", "-")),
         "version":    raw.get("version", "?"),
-        "deps":       deps,
+        "deps":       deps_str,
         "maintainer": raw.get("maintainer", "-"),
     }
 
@@ -298,7 +294,7 @@ class PackageItem(ListItem):
 try:
     from textual.screen import ModalScreen as _ModalScreen
 except ImportError:
-    _ModalScreen = object
+    _ModalScreen = object  # type: ignore
 
 class ConfirmUninstall(_ModalScreen):
 
@@ -429,7 +425,8 @@ class TermuxAppStore(App):
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
     def load_packages(self, online: bool = True):
-        raw = fetch_index() if online else []
+        import termux_app_store.termux_app_store as _self
+        raw = _self._fetch_index() if online else []
         if raw:
             self.packages = [normalize_pkg(p) for p in raw]
         else:
@@ -440,6 +437,7 @@ class TermuxAppStore(App):
                 local = load_packages_from_local(PACKAGES_DIR)
                 self.packages = [normalize_pkg(p) for p in local]
         self.status_cache.clear()
+
 
     def refresh_list(self):
         self.list_view.clear()
@@ -494,11 +492,13 @@ class TermuxAppStore(App):
             badge = "[red]NOT INSTALLED[/red]"
             ver_line = f"Version    : {p['version']}"
 
-        deps = p.get("deps", [])
+        deps = p.get("deps", "-")
         if isinstance(deps, list):
             deps_str = "\n".join(f"• {d}" for d in deps) if deps else "-"
+        elif isinstance(deps, str) and deps != "-":
+            deps_str = "\n".join(f"• {d.strip()}" for d in deps.split(",") if d.strip())
         else:
-            deps_str = "\n".join(f"• {d.strip()}" for d in deps.split(",") if d.strip()) if deps != "-" else "-"
+            deps_str = "-"
 
         self.info.update(
             f"[b]{p['name']}[/b]  {badge}\n\n"
@@ -549,7 +549,7 @@ class TermuxAppStore(App):
         self.call_from_thread(lambda: self.update_log(f"Installing {name}...\n"))
 
         if not ensure_package_files(name):
-            self.call_from_thread(lambda: self.update_log(f"\nFailed to download build files for {name}."))
+            self.call_from_thread(lambda: self.update_log(f"Failed to download build files for {name}."))
             self.installing = False
             self.call_from_thread(lambda: setattr(self.install_btn, "disabled", False))
             self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
@@ -638,8 +638,6 @@ class TermuxAppStore(App):
             self.log_buffer = self.log_buffer[-500:]
         self.log_view.update("\n".join(self.log_buffer))
         self.log_container.scroll_end(animate=False)
-
-_fetch_index = fetch_index
 
 
 def run_tui():
