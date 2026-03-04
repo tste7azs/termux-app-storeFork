@@ -236,8 +236,9 @@ def normalize_pkg_from_index(raw: dict) -> dict:
 
 
 def load_package(pkg_dir: Path) -> dict:
-    import termux_app_store.termux_app_store_cli as _self
-    index_pkgs = _self.fetch_index()
+    import sys as _sys
+    _mod = _sys.modules[__name__]
+    index_pkgs = _mod.fetch_index()
     if index_pkgs:
         match = next(
             (p for p in index_pkgs if p.get("package", p.get("name", "")) == pkg_dir.name),
@@ -283,8 +284,8 @@ def load_package(pkg_dir: Path) -> dict:
 
 
 def load_all_packages(packages_dir: Path) -> list:
-    import termux_app_store.termux_app_store_cli as _self
-    index_pkgs = _self.fetch_index()
+    import sys as _sys
+    index_pkgs = _sys.modules[__name__].fetch_index()
     if index_pkgs:
         return [normalize_pkg_from_index(p) for p in index_pkgs]
 
