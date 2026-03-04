@@ -15,7 +15,7 @@ on:
 jobs:
   generate-index:
     runs-on: ubuntu-latest
-
+    if: github.repository == 'djunekz/termux-app-store'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
