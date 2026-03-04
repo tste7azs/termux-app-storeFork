@@ -24,8 +24,8 @@ try:
     from textual.containers import Horizontal, Vertical, VerticalScroll, Center
     _TEXTUAL_AVAILABLE = True
 except ImportError:
-    App = object  # type: ignore
-    ComposeResult = None  # type: ignore
+    App = object
+    ComposeResult = None
     _TEXTUAL_AVAILABLE = False
 
     class _Stub:
@@ -177,15 +177,21 @@ def fetch_index() -> list:
             pkgs = data.get("packages", [])
 
             try:
-                INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-                INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
+                INDEX_CACHE.parent.mkdir(parents=True, exist_ok=True)
+                INDEX_CACHE.write_text(json.dumps(data, indent=2))
             except Exception:
                 pass
             return pkgs
     except Exception:
+        try:
+            if INDEX_CACHE.exists():
+                data = json.loads(INDEX_CACHE.read_text())
+                return data.get("packages", [])
+        except Exception:
+            pass
         return []
 
-fetch_index_from_github = fetch_index  # backward-compat
+fetch_index_from_github = fetch_index
 
 
 def load_index_cache() -> list:
@@ -292,7 +298,7 @@ class PackageItem(ListItem):
 try:
     from textual.screen import ModalScreen as _ModalScreen
 except ImportError:
-    _ModalScreen = object  # type: ignore
+    _ModalScreen = object
 
 class ConfirmUninstall(_ModalScreen):
 
@@ -435,7 +441,6 @@ class TermuxAppStore(App):
                 self.packages = [normalize_pkg(p) for p in local]
         self.status_cache.clear()
 
-
     def refresh_list(self):
         self.list_view.clear()
         q = self.search_query
@@ -544,7 +549,7 @@ class TermuxAppStore(App):
         self.call_from_thread(lambda: self.update_log(f"Installing {name}...\n"))
 
         if not ensure_package_files(name):
-            self.update_log(f"\n✗ Could not fetch build files for {name}.")
+            self.call_from_thread(lambda: self.update_log(f"\nFailed to download build files for {name}."))
             self.installing = False
             self.call_from_thread(lambda: setattr(self.install_btn, "disabled", False))
             self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
