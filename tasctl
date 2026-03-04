@@ -50,10 +50,10 @@ banner() {
 
 detect_arch() {
   case "$(uname -m)" in
-    aarch64)   echo "termux-app-store-aarch64" ;;
+    aarch64)       echo "termux-app-store-aarch64" ;;
     armv7l|armv8l) echo "termux-app-store-arm" ;;
-    x86_64)    echo "termux-app-store-x86_64" ;;
-    i686|i386) echo "termux-app-store-i686" ;;
+    x86_64)        echo "termux-app-store-x86_64" ;;
+    i686|i386)     echo "termux-app-store-i686" ;;
     *) err "Unsupported architecture: $(uname -m)" ;;
   esac
 }
@@ -117,6 +117,27 @@ installed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 }
 
+create_wrapper() {
+  local ver="$1"
+  local mode="$2"
+
+  {
+    printf '#!/data/data/com.termux/files/usr/bin/bash\n'
+    printf 'export TERMUX_APP_STORE_VERSION="%s"\n' "$ver"
+    printf 'export TERMUX_APP_STORE_HOME="%s"\n' "$INSTALL_DIR"
+    printf '\n'
+    if [[ "$mode" == "source" ]]; then
+      printf 'exec python3 "%s/termux_app_store/main.py" "$@"\n' "$INSTALL_DIR"
+    else
+      printf 'export TERMUX_APP_STORE_HOME="%s"\n' "$INSTALL_DIR"
+      printf 'exec "%s" "$@"\n' "$BIN_PATH"
+    fi
+  } > "$SYMLINK"
+
+  chmod +x "$SYMLINK"
+  ok "Wrapper created: $SYMLINK"
+}
+
 install_app() {
   local mode="${1:-install}"
   local tag bin_name url
@@ -143,12 +164,40 @@ install_app() {
     err "Download failed. Check your internet connection."
   fi
 
-  step "Creating symlink..."
-  ln -sf "$BIN_PATH" "$SYMLINK"
-  ok "Symlink: $SYMLINK → $BIN_PATH"
+  step "Cloning repo data (packages/, tools/)..."
+  if ! command -v git >/dev/null 2>&1; then
+    info "Installing git..."
+    pkg install -y git || err "Failed to install git"
+  fi
+  local tmp_repo
+  tmp_repo=$(mktemp -d)
+  git clone --depth=1 "https://github.com/$REPO.git" "$tmp_repo" \
+    || err "Failed to clone repository"
+
+  if [[ -d "$tmp_repo/packages" ]]; then
+    cp -r "$tmp_repo/packages" "$INSTALL_DIR/"
+    ok "packages/ copied"
+  fi
+  if [[ -d "$tmp_repo/tools" ]]; then
+    cp -r "$tmp_repo/tools" "$INSTALL_DIR/"
+    ok "tools/ copied"
+  fi
+  if [[ -f "$tmp_repo/build-package.sh" ]]; then
+    cp "$tmp_repo/build-package.sh" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR/build-package.sh"
+    ok "build-package.sh copied"
+  fi
+  # Copy any root-level files needed for fingerprint check
+  for _f in "$tmp_repo"/.tas-store "$tmp_repo"/.fingerprint "$tmp_repo"/termux-app-store.json; do
+    [[ -f "$_f" ]] && cp "$_f" "$INSTALL_DIR/" && ok "$(basename $_f) copied"
+  done
+  rm -rf "$tmp_repo"
 
   local ver="${tag#v}"
   write_sentinel "$ver" "binary"
+
+  step "Creating wrapper..."
+  create_wrapper "$ver" "binary"
 
   printf "\n%s  ✔ %s %s %sed successfully!%s\n" "$GREEN$B" "$APP_NAME" "$tag" "$mode" "$R"
   info "Run with: ${CYAN}$APP_NAME${R}"
@@ -210,10 +259,10 @@ cmd_doctor() {
   fi
 
   printf "\n %spip%s\n" "$B" "$R"
-  if command -v pip3 >/dev/null 2>&1; then
+  if python3 -m pip --version >/dev/null 2>&1; then
+    ok "$(python3 -m pip --version | awk '{print $1,$2}')"
+  elif command -v pip3 >/dev/null 2>&1; then
     ok "$(pip3 --version | awk '{print $1,$2}')"
-  elif command -v pip >/dev/null 2>&1; then
-    ok "$(pip --version | awk '{print $1,$2}')"
   else
     warn "pip not found"
     info "Fix: pkg install python"
@@ -227,7 +276,7 @@ cmd_doctor() {
     ok "textual v$txt_ver"
   else
     warn "Textual not found"
-    info "Fix: pip install textual --break-system-packages"
+    info "Fix: python3 -m pip install textual --break-system-packages"
     all_ok=false
   fi
 
@@ -259,13 +308,22 @@ cmd_doctor() {
       && ok "Wrapper OK: $SYMLINK" \
       || { warn "Wrapper missing: $SYMLINK"; info "Fix: run install.sh again"; all_ok=false; }
     [[ -f "$SENTINEL" ]] && ok "Sentinel OK" || warn "Sentinel missing (install info not found)"
+
+    printf "\n %sTERMUX_APP_STORE_HOME in wrapper%s\n" "$B" "$R"
+    if grep -q 'TERMUX_APP_STORE_HOME' "$SYMLINK" 2>/dev/null; then
+      ok "TERMUX_APP_STORE_HOME is set in wrapper"
+    else
+      warn "TERMUX_APP_STORE_HOME missing from wrapper"
+      info "Fix: tasctl update"
+      all_ok=false
+    fi
   else
     warn "$APP_NAME not installed"
     info "Fix: $CTL_NAME install   or   bash install.sh"
     all_ok=false
   fi
 
-  printf "\n %sTERMUX_APP_STORE_HOME%s\n" "$B" "$R"
+  printf "\n %sTERMUX_APP_STORE_HOME (env)%s\n" "$B" "$R"
   if [[ -n "${TERMUX_APP_STORE_HOME:-}" ]]; then
     if [[ -d "$TERMUX_APP_STORE_HOME/packages" ]]; then
       ok "Set and valid: $TERMUX_APP_STORE_HOME"
@@ -274,7 +332,7 @@ cmd_doctor() {
       all_ok=false
     fi
   else
-    info "Not set (optional)"
+    info "Not set in current shell (set via wrapper)"
   fi
 
   printf "\n%s%s%s\n" "$DIM" "$(printf '─%.0s' $(seq 1 42))" "$R"
