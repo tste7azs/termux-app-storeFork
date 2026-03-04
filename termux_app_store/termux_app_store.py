@@ -49,6 +49,8 @@ INDEX_CACHE_FILE = (
     / "index.json"
 )
 
+INDEX_CACHE = INDEX_CACHE_FILE
+
 FINGERPRINT_STRING = "Termux App Store Official"
 GITHUB_REPO        = "djunekz/termux-app-store"
 INDEX_URL          = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/tools/index.json"
@@ -164,7 +166,7 @@ def resolve_app_root() -> Path:
         "export TERMUX_APP_STORE_HOME=/path/to/termux-app-store"
     )
 
-def fetch_index_from_github() -> list:
+def fetch_index() -> list:
     try:
         req = urllib.request.Request(
             INDEX_URL,
@@ -182,6 +184,9 @@ def fetch_index_from_github() -> list:
             return pkgs
     except Exception:
         return []
+
+fetch_index_from_github = fetch_index  # backward-compat
+
 
 def load_index_cache() -> list:
     try:
@@ -236,7 +241,7 @@ def ensure_package_files(name: str) -> bool:
         req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read()
-            if resp.status == 200 and raw:
+            if raw:
                 build_sh.write_bytes(raw)
                 return True
     except Exception:
@@ -417,16 +422,17 @@ class TermuxAppStore(App):
         yield self.status_bar
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
-    def load_packages(self, online: bool = False):
-        if online:
-            self.packages = get_packages(PACKAGES_DIR, online=True)
+    def load_packages(self, online: bool = True):
+        raw = fetch_index() if online else []
+        if raw:
+            self.packages = [normalize_pkg(p) for p in raw]
         else:
-            local = load_packages_from_local(PACKAGES_DIR)
-            if local:
-                self.packages = [normalize_pkg(p) for p in local]
+            cached = load_index_cache()
+            if cached:
+                self.packages = [normalize_pkg(p) for p in cached]
             else:
-                cached = load_index_cache()
-                self.packages = [normalize_pkg(p) for p in cached] if cached else []
+                local = load_packages_from_local(PACKAGES_DIR)
+                self.packages = [normalize_pkg(p) for p in local]
         self.status_cache.clear()
 
 
@@ -538,7 +544,7 @@ class TermuxAppStore(App):
         self.call_from_thread(lambda: self.update_log(f"Installing {name}...\n"))
 
         if not ensure_package_files(name):
-            self.call_from_thread(lambda: self.update_log(f"\n✗ Could not fetch build files for {name}."))
+            self.update_log(f"\n✗ Could not fetch build files for {name}.")
             self.installing = False
             self.call_from_thread(lambda: setattr(self.install_btn, "disabled", False))
             self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
@@ -628,7 +634,7 @@ class TermuxAppStore(App):
         self.log_view.update("\n".join(self.log_buffer))
         self.log_container.scroll_end(animate=False)
 
-_fetch_index = fetch_index_from_github
+_fetch_index = fetch_index
 
 
 def run_tui():
