@@ -36,6 +36,13 @@ check_var() {
     if ! grep -Eq "^${var}=" "$FILE"; then
         echo -e "${BOLD_RED}❌ FAIL :${RESET} $var is missing"
         FAIL=1
+        return
+    fi
+    local val
+    val=$(grep -E "^${var}=" "$FILE" | head -1 | sed "s/^${var}=//;s/^[\"']//;s/[\"']$//")
+    if [[ -z "$val" ]]; then
+        echo -e "${BOLD_RED}❌ FAIL :${RESET} $var is empty"
+        FAIL=1
     else
         echo -e "${BOLD_GREEN}✅ OK   :${RESET} $var"
     fi
@@ -76,7 +83,10 @@ _load_pkg_vars() {
 SRCURL="$(_load_pkg_vars)"
 EXPECTED_SHA="$(set +u; source "$FILE" 2>/dev/null; set -u; echo "${TERMUX_PKG_SHA256:-}")"
 
-if [[ -n "$SRCURL" && -n "$EXPECTED_SHA" ]]; then
+if [[ -z "$EXPECTED_SHA" ]]; then
+    echo -e "   ${BOLD_YELLOW}\nHint:\n Fill TERMUX_PKG_ SHA256 with the SHA256 from the file in TERMUX _PKG_SRCURL${RESET}"
+    FAIL=1
+elif [[ -n "$SRCURL" ]]; then
     echo
     echo -e "${BOLD_CYAN}🔎 Verifying SHA256 of source package 📦 $PACKAGE_NAME...${RESET}"
     echo -e "   ${CYAN}URL: $SRCURL${RESET}"
