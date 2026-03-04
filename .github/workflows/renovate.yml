@@ -18,17 +18,17 @@ jobs:
 
     steps:
       - name: Checkout PR code
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
       - name: Detect changed files
         id: files
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash
         run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          FILES=$(git diff "$BASE"...HEAD --name-only || true)
-
+          FILES=$(git diff "$PR_BASE_SHA"...HEAD --name-only || true)
           {
             echo "files<<EOF"
             echo "$FILES"
@@ -47,42 +47,41 @@ jobs:
 
       - name: Lint build.sh (syntax)
         if: contains(steps.files.outputs.files, 'build.sh')
+        env:
+          CHANGED_FILES: ${{ steps.files.outputs.files }}
         shell: bash
         run: |
           set -e
-          while read -r file; do
+          while IFS= read -r file; do
             [[ "$file" != *build.sh ]] && continue
             echo "🧹 Checking $file"
             sed -i 's/\r$//' "$file"
             bash -n "$file"
-          done <<< "${{ steps.files.outputs.files }}"
+          done <<< "$CHANGED_FILES"
 
       - name: Validate package metadata
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash
         run: |
           set -e
           FAIL=0
-          BASE="${{ github.event.pull_request.base.sha }}"
-
-          PKGS=$(git diff "$BASE"...HEAD --name-only \
+          PKGS=$(git diff "$PR_BASE_SHA"...HEAD --name-only \
             | awk -F/ '/^packages\/[^/]+\/build.sh$/ {print $2}' \
             | sort -u)
-
-          for PKG in $PKGS; do
+          while IFS= read -r PKG; do
+            [[ -z "$PKG" ]] && continue
             BUILD="packages/$PKG/build.sh"
             echo "🔍 Validating $BUILD"
-
             get() { grep -E "^$1=" "$BUILD" | cut -d= -f2- | head -n1; }
-
             [[ -z "$(get TERMUX_PKG_VERSION)" ]] && FAIL=1
             [[ -z "$(get TERMUX_PKG_SRCURL)" ]] && FAIL=1
             [[ "$(get TERMUX_PKG_SHA256)" =~ ^[a-f0-9]{64}$ ]] || FAIL=1
-          done
-
+          done <<< "$PKGS"
           [ "$FAIL" -eq 0 ]
 
       - name: Comment success
-        uses: peter-evans/create-or-update-comment@v5
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
