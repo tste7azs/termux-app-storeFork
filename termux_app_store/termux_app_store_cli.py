@@ -739,6 +739,36 @@ if __name__ == "__main__":
 
 INDEX_CACHE  = INDEX_CACHE_FILE
 
+def _load_package_from_disk(pkg_dir: Path) -> dict:
+    name = pkg_dir.name
+    build = pkg_dir / "build.sh"
+    data = {
+        "name": name,
+        "desc": "-",
+        "version": "?",
+        "deps": "-",
+        "maintainer": "-",
+        "homepage": "-",
+        "license": "-",
+    }
+    if not build.exists():
+        return data
+    with build.open(errors="ignore") as f:
+        for line in f:
+            for key, field in [
+                ("TERMUX_PKG_DESCRIPTION=", "desc"),
+                ("TERMUX_PKG_VERSION=",     "version"),
+                ("TERMUX_PKG_MAINTAINER=",  "maintainer"),
+                ("TERMUX_PKG_HOMEPAGE=",    "homepage"),
+                ("TERMUX_PKG_LICENSE=",     "license"),
+            ]:
+                if line.startswith(key):
+                    data[field] = line.split("=", 1)[1].strip().strip('"')
+            if line.startswith("TERMUX_PKG_DEPENDS="):
+                data["deps"] = line.split("=", 1)[1].strip().strip('"')
+    return data
+
+
 def load_package(pkg_dir: Path) -> dict:
     name = pkg_dir.name
     raw_index = fetch_index()
@@ -785,7 +815,17 @@ def load_package(pkg_dir: Path) -> dict:
 def load_all_packages(packages_dir: Path) -> list:
     raw_index = fetch_index()
     if raw_index:
-        return [normalize_pkg(p) for p in raw_index]
+        index_names = {p.get("package", p.get("name", "")) for p in raw_index}
+        pkgs = [normalize_pkg(p) for p in raw_index]
+        if packages_dir.exists():
+            for pkg_dir in sorted(packages_dir.iterdir()):
+                if not pkg_dir.is_dir():
+                    continue
+                if not (pkg_dir / "build.sh").exists():
+                    continue
+                if pkg_dir.name not in index_names:
+                    pkgs.append(_load_package_from_disk(pkg_dir))
+        return pkgs
     pkgs = []
     if not packages_dir.exists():
         return pkgs
@@ -794,5 +834,5 @@ def load_all_packages(packages_dir: Path) -> list:
             continue
         if not (pkg_dir / "build.sh").exists():
             continue
-        pkgs.append(load_package(pkg_dir))
+        pkgs.append(_load_package_from_disk(pkg_dir))
     return pkgs
