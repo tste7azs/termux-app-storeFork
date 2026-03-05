@@ -14,7 +14,7 @@
 [![License](https://img.shields.io/badge/License-MIT-3fb950?style=flat&logo=opensourceinitiative&logoColor=white)](LICENSE)
 <br>
 <br>
-[![Stars](https://img.shields.io/github/stars/djunekz/termux-app-store?style=flat&logo=github&color=white&label=stars&cacheSeconds=3600)](https://github.com/djunekz/termux-app-store/stargazers)
+[![Stars](https://img.shields.io/github/stars/djunekz/termux-app-store?style=flat&logo=github&color=ffffff&label=stars&cacheSeconds=3600)](https://github.com/djunekz/termux-app-store/stargazers)
 [![Forks](https://img.shields.io/github/forks/djunekz/termux-app-store?style=flat&logo=github&color=white&cacheSeconds=3600)](https://github.com/djunekz/termux-app-store/network)
 <br>
 <br>
