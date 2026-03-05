@@ -10,6 +10,7 @@ and this project adheres to semantic versioning.
 
 ### Update
 - Package `tdoc` v1.0.5 → v1.0.6
+- Package `basic` v1.0.0 → v1.0.2
 
 ### Added
 - Package `basic` v1.0.0 - Simulator Terminal learning basic command for beginner
