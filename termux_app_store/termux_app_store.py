@@ -165,7 +165,7 @@ def resolve_app_root() -> Path:
     )
 
 def fetch_index_from_github() -> list:
-    """Fetch index.json dari GitHub, return list packages atau [] jika gagal."""
+    """Fetch index.json dari GitHub. Fallback ke cache lokal jika gagal."""
     try:
         req = urllib.request.Request(
             INDEX_URL,
@@ -174,7 +174,6 @@ def fetch_index_from_github() -> list:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
             pkgs = data.get("packages", [])
-            # Simpan ke cache
             try:
                 INDEX_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
                 INDEX_CACHE_FILE.write_text(json.dumps(data, indent=2))
@@ -182,7 +181,40 @@ def fetch_index_from_github() -> list:
                 pass
             return pkgs
     except Exception:
+        if INDEX_CACHE_FILE.exists():
+            try:
+                data = json.loads(INDEX_CACHE_FILE.read_text())
+                return data.get("packages", [])
+            except Exception:
+                pass
         return []
+
+
+_fetch_index = fetch_index_from_github
+
+
+def ensure_package_files(name: str) -> bool:
+    """Download build.sh dari GitHub jika belum ada lokal."""
+    pkg_dir = PACKAGES_DIR / name
+    build_sh = pkg_dir / "build.sh"
+
+    if build_sh.exists():
+        return True
+
+    url = (
+        f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/packages/{name}/build.sh"
+    )
+    try:
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read()
+            if raw:
+                build_sh.write_bytes(raw)
+                return True
+    except Exception:
+        pass
+    return False
 
 def load_index_cache() -> list:
     """Baca index.json dari cache lokal."""
@@ -516,6 +548,13 @@ class TermuxAppStore(App):
         self.log_buffer.clear()
         self.call_from_thread(lambda: setattr(self.progress, "progress", 0))
         self.call_from_thread(lambda: self.update_log(f"Installing {name}...\n"))
+
+        if not ensure_package_files(name):
+            self.call_from_thread(lambda: self.update_log(f"\n✗ Failed to download build files for {name}."))
+            self.installing = False
+            self.call_from_thread(lambda: setattr(self.install_btn, "disabled", False))
+            self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
+            return
 
         proc = subprocess.Popen(
             ["bash", "build-package.sh", name],

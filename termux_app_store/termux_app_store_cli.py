@@ -380,6 +380,30 @@ def cmd_show(packages_dir: Path, name: str):
 """)
 
 
+def ensure_package_files(packages_dir: Path, name: str) -> bool:
+    """Download build.sh dari GitHub jika belum ada lokal."""
+    pkg_dir = packages_dir / name
+    build_sh = pkg_dir / "build.sh"
+
+    if build_sh.exists():
+        return True
+
+    url = (
+        f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/packages/{name}/build.sh"
+    )
+    try:
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read()
+            if raw:
+                build_sh.write_bytes(raw)
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False) -> bool:
     pkgs = load_all_packages(packages_dir)
     p = next((x for x in pkgs if x["name"] == name), None)
@@ -396,6 +420,11 @@ def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = Fa
         return True
 
     print(f"\n{B}[*] Installing {CYAN}{name}{R}{B} v{p['version']}...{R}\n")
+
+    if not ensure_package_files(packages_dir, name):
+        print(f"{RED}[✗] Failed to download build files for '{name}'.{R}")
+        print(f"    Check your internet connection or try again later.")
+        return False
 
     proc = subprocess.Popen(
         ["bash", "build-package.sh", name],
