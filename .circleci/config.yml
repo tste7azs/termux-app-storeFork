@@ -8,16 +8,15 @@ jobs:
       - checkout
 
       - run:
-          name: Install coverage
+          name: Install dependencies
           command: |
             pip install --upgrade pip
-            pip install coverage
+            pip install coverage pytest
 
       - run:
-          name: Run real CLI coverage
+          name: Run tests coverage
           command: |
-            chmod +x termux-build tasctl || true
-            coverage run ci/run_cli.py
+            coverage run -m pytest tests/
             coverage xml
 
       - run:

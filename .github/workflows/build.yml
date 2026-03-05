@@ -4,9 +4,8 @@ on:
   push:
     branches: [ master ]
     paths:
-      - '**.py'
-      - 'tests/**'
       - 'tools/**'
+      - 'tests/**'
       - 'pytest.ini'
       - '.github/workflows/build.yml'
   pull_request:
@@ -31,12 +30,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-cov textual
+          pip install pytest pytest-cov
 
       - name: Run tests with coverage
         run: |
           pytest \
-            --cov=termux_app_store \
             --cov=tools \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
