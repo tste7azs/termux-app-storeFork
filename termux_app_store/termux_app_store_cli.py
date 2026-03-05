@@ -235,7 +235,7 @@ def normalize_pkg(raw: dict) -> dict:
 
 def get_packages(packages_dir: Path, online: bool = True) -> list:
     if online:
-        raw = fetch_index_from_github()
+        raw = fetch_index()
         if raw:
             return [normalize_pkg(p) for p in raw]
 
@@ -471,7 +471,7 @@ def cmd_uninstall(name: str):
 def cmd_update(packages_dir: Path):
     print(f"\n{B}[*] Syncing package index from GitHub...{R}")
 
-    raw = fetch_index_from_github()
+    raw = fetch_index()
     if raw:
         print(f"{GREEN}[✔] Index updated — {len(raw)} packages found.{R}\n")
         pkgs = [normalize_pkg(p) for p in raw]
