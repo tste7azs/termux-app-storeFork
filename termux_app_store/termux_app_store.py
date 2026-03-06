@@ -164,7 +164,6 @@ def resolve_app_root() -> Path:
     )
 
 def fetch_index_from_github() -> list:
-    """Fetch index.json dari GitHub. Fallback ke cache lokal jika gagal."""
     try:
         req = urllib.request.Request(
             INDEX_URL,
@@ -193,13 +192,8 @@ _fetch_index = fetch_index_from_github
 
 
 def ensure_package_files(name: str) -> bool:
-    """Download build.sh dari GitHub jika belum ada lokal."""
     pkg_dir = PACKAGES_DIR / name
     build_sh = pkg_dir / "build.sh"
-
-    if build_sh.exists():
-        return True
-
     url = (
         f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/packages/{name}/build.sh"
     )
@@ -213,10 +207,11 @@ def ensure_package_files(name: str) -> bool:
                 return True
     except Exception:
         pass
+    if build_sh.exists():
+        return True
     return False
 
 def load_index_cache() -> list:
-    """Baca index.json dari cache lokal."""
     try:
         if INDEX_CACHE_FILE.exists():
             data = json.loads(INDEX_CACHE_FILE.read_text())
@@ -226,7 +221,6 @@ def load_index_cache() -> list:
     return []
 
 def load_packages_from_local(packages_dir: Path) -> list:
-    """Fallback: baca dari packages/*/build.sh lokal."""
     pkgs = []
     if not packages_dir.exists():
         return pkgs
@@ -256,7 +250,6 @@ def load_packages_from_local(packages_dir: Path) -> list:
     return pkgs
 
 def normalize_pkg(raw: dict) -> dict:
-    """Normalize index.json entry ke format internal yang konsisten."""
     deps = raw.get("depends", [])
     if isinstance(deps, str):
         deps = [d.strip() for d in deps.split(",") if d.strip()]
@@ -269,14 +262,8 @@ def normalize_pkg(raw: dict) -> dict:
     }
 
 def get_packages(packages_dir: Path, online: bool = True) -> list:
-    """
-    Ambil daftar packages dengan prioritas:
-    1. GitHub index.json (online, fresh)
-    2. Cache index.json lokal
-    3. Fallback baca packages/ lokal
-    """
     if online:
-        raw = _fetch_index()
+        raw = fetch_index_from_github()
         if raw:
             return [normalize_pkg(p) for p in raw]
 
@@ -417,12 +404,7 @@ class TermuxAppStore(App):
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
     def load_packages(self, online: bool = False):
-        raw = _fetch_index()
-        if raw:
-            self.packages = [normalize_pkg(p) for p in raw]
-        else:
-            local = load_packages_from_local(PACKAGES_DIR)
-            self.packages = [normalize_pkg(p) for p in local]
+        self.packages = get_packages(PACKAGES_DIR, online=online)
         self.status_cache.clear()
 
     def refresh_list(self):

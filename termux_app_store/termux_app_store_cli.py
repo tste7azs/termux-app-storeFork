@@ -381,13 +381,8 @@ def cmd_show(packages_dir: Path, name: str):
 
 
 def ensure_package_files(packages_dir: Path, name: str) -> bool:
-    """Download build.sh dari GitHub jika belum ada lokal."""
     pkg_dir = packages_dir / name
     build_sh = pkg_dir / "build.sh"
-
-    if build_sh.exists():
-        return True
-
     url = (
         f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/packages/{name}/build.sh"
     )
@@ -401,6 +396,8 @@ def ensure_package_files(packages_dir: Path, name: str) -> bool:
                 return True
     except Exception:
         pass
+    if build_sh.exists():
+        return True
     return False
 
 
@@ -762,6 +759,10 @@ def run_cli():
         cmd_upgrade(APP_ROOT, PACKAGES_DIR, target)
 
 
+if __name__ == "__main__":
+    run_cli()
+
+
 INDEX_CACHE  = INDEX_CACHE_FILE
 
 def _load_package_from_disk(pkg_dir: Path) -> dict:
@@ -861,6 +862,3 @@ def load_all_packages(packages_dir: Path) -> list:
             continue
         pkgs.append(_load_package_from_disk(pkg_dir))
     return pkgs
-
-if __name__ == "__main__":
-    run_cli()
