@@ -762,10 +762,6 @@ def run_cli():
         cmd_upgrade(APP_ROOT, PACKAGES_DIR, target)
 
 
-if __name__ == "__main__":
-    run_cli()
-
-
 INDEX_CACHE  = INDEX_CACHE_FILE
 
 def _load_package_from_disk(pkg_dir: Path) -> dict:
@@ -865,3 +861,6 @@ def load_all_packages(packages_dir: Path) -> list:
             continue
         pkgs.append(_load_package_from_disk(pkg_dir))
     return pkgs
+
+if __name__ == "__main__":
+    run_cli()

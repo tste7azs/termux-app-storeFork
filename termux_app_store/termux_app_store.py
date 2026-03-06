@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import asyncio
 import subprocess
 import time
@@ -24,8 +23,8 @@ try:
     from textual.containers import Horizontal, Vertical, VerticalScroll, Center
     _TEXTUAL_AVAILABLE = True
 except ImportError:
-    App = object  # type: ignore
-    ComposeResult = None  # type: ignore
+    App = object
+    ComposeResult = None
     _TEXTUAL_AVAILABLE = False
 
     class _Stub:
@@ -277,7 +276,7 @@ def get_packages(packages_dir: Path, online: bool = True) -> list:
     3. Fallback baca packages/ lokal
     """
     if online:
-        raw = fetch_index_from_github()
+        raw = _fetch_index()
         if raw:
             return [normalize_pkg(p) for p in raw]
 
@@ -285,7 +284,6 @@ def get_packages(packages_dir: Path, online: bool = True) -> list:
     if cached:
         return [normalize_pkg(p) for p in cached]
 
-    # Fallback lokal
     raw = load_packages_from_local(packages_dir)
     return [normalize_pkg(p) for p in raw]
 
@@ -307,7 +305,7 @@ class PackageItem(ListItem):
 try:
     from textual.screen import ModalScreen as _ModalScreen
 except ImportError:
-    _ModalScreen = object  # type: ignore
+    _ModalScreen = object
 
 class ConfirmUninstall(_ModalScreen):
 
@@ -315,39 +313,31 @@ class ConfirmUninstall(_ModalScreen):
     ConfirmUninstall {
         align: center middle;
     }
-    #dialog {
         width: 60;
         height: auto;
-        border: heavy #ff5555;
-        background: #282a36;
+        border: heavy
+        background:
         padding: 2 4;
     }
-    #dialog-title {
         text-align: center;
-        color: #ff5555;
+        color:
         text-style: bold;
         margin-bottom: 1;
     }
-    #dialog-msg {
         text-align: center;
-        color: #f8f8f2;
+        color:
         margin-bottom: 2;
     }
-    #dialog-btns {
         align: center middle;
         height: auto;
     }
-    #btn-cancel {
         margin-right: 2;
-        background: #44475a;
-        color: #f8f8f2;
+        background:
+        color:
     }
-    #btn-cancel:hover { background: #6272a4; }
-    #btn-confirm-uninstall {
-        background: #ff5555;
-        color: #f8f8f2;
+        background:
+        color:
     }
-    #btn-confirm-uninstall:hover { background: #ff6e6e; }
     """
 
     def __init__(self, package_name: str):
@@ -375,20 +365,9 @@ class ConfirmUninstall(_ModalScreen):
 class TermuxAppStore(App):
 
     CSS = """
-    Screen { background: #282a36; color: #f8f8f2; }
-    #body { layout: horizontal; height: 1fr; }
-    #left { width: 35%; border: heavy #6272a4; padding: 1; }
-    #right { width: 65%; border: heavy #6272a4; padding: 1; }
-    ListItem.-highlight { background: #44475a; color: #50fa7b; }
+    Screen { background:
+    ListItem.-highlight { background:
     ProgressBar { height: 1; }
-    #footer { height: 1; content-align: center middle; color: #6272a4; }
-    #log-scroll { height: 1fr; border: solid #6272a4; }
-    #btn-row { height: auto; margin-top: 1; }
-    #install { margin-right: 1; }
-    #uninstall { background: #ff5555; color: #f8f8f2; display: none; }
-    #uninstall:hover { background: #ff6e6e; }
-    #uninstall:disabled { background: #44475a; color: #6272a4; }
-    #status-bar { height: 1; content-align: left middle; color: #6272a4; padding-left: 1; }
     """
 
     def on_mount(self): # pragma: no cover
@@ -402,7 +381,6 @@ class TermuxAppStore(App):
 
         self.set_interval(0.1, self.consume_worker_queue)
 
-        # Load packages: coba online dulu, fallback ke cache/lokal
         self.load_packages(online=True)
         self.refresh_list()
 
@@ -439,7 +417,12 @@ class TermuxAppStore(App):
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
     def load_packages(self, online: bool = False):
-        self.packages = get_packages(PACKAGES_DIR, online=online)
+        raw = _fetch_index()
+        if raw:
+            self.packages = [normalize_pkg(p) for p in raw]
+        else:
+            local = load_packages_from_local(PACKAGES_DIR)
+            self.packages = [normalize_pkg(p) for p in local]
         self.status_cache.clear()
 
     def refresh_list(self):
