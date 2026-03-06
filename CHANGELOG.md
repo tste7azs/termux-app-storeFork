@@ -16,6 +16,9 @@ and this project adheres to semantic versioning.
 - Package `basic` v1.0.0 - Simulator Terminal learning basic command for beginner
 - Package `userfinder` v1.0 - OSINT tool for finding profiles by username
 
+### Changed
+- Package `basic` v1.2.0 - Updated metadata
+
 ---
 
 ## [v0.1.7] - 2026-03-02
