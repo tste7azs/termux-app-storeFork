@@ -42,8 +42,8 @@ GITHUB_API_TAG     = f"https://api.github.com/repos/{GITHUB_REPO}/releases/lates
 INDEX_URL          = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/tools/index.json"
 
 _SELF_FILES = {
-    "termux_app_store_cli.py": f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/termux_app_store_cli.py",
-    "termux_app_store.py":     f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/termux_app_store.py",
+    "termux_app_store_cli.py": f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/termux_app_store/termux_app_store_cli.py",
+    "termux_app_store.py":     f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/termux_app_store/termux_app_store.py",
 }
 
 _INSTALL_DIR = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib" / ".tas"
