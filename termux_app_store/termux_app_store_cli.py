@@ -41,13 +41,11 @@ GITHUB_REPO        = "djunekz/termux-app-store"
 GITHUB_API_TAG     = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 INDEX_URL          = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/tools/index.json"
 
-# Self-update: URL raw file di GitHub
 _SELF_FILES = {
     "termux_app_store_cli.py": f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/termux_app_store_cli.py",
     "termux_app_store.py":     f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/termux_app_store.py",
 }
 
-# Install dir (sama dengan yang di install.sh)
 _INSTALL_DIR = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib" / ".tas"
 
 R       = "\033[0m"
@@ -390,7 +388,6 @@ def cmd_show(packages_dir: Path, name: str):
 
 
 def ensure_package_files(packages_dir: Path, name: str) -> bool:
-    """Download build.sh dari GitHub jika belum ada lokal."""
     pkg_dir = packages_dir / name
     build_sh = pkg_dir / "build.sh"
 
@@ -509,7 +506,6 @@ def cmd_uninstall(name: str):
 def cmd_update(packages_dir: Path):
     print(f"\n{B}[*] Syncing package index from GitHub...{R}")
 
-    # Cek & update file inti (cli/tui) dari GitHub
     cmd_self_update(silent=False)
 
     raw = fetch_index()
@@ -607,17 +603,16 @@ def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
 
 
 def _fetch_remote_content(url: str):
-    """Fetch raw bytes dari URL. Return None jika gagal."""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            return resp.read()
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read()
+            return data if data else None
     except Exception:
         return None
 
 
 def _files_differ(local_path: "Path", remote_bytes: bytes) -> bool:
-    """True jika konten file lokal berbeda dengan remote."""
     try:
         return local_path.read_bytes() != remote_bytes
     except Exception:
@@ -625,15 +620,6 @@ def _files_differ(local_path: "Path", remote_bytes: bytes) -> bool:
 
 
 def cmd_self_update(silent: bool = False) -> bool:
-    """
-    Cek & update file inti (termux_app_store_cli.py + termux_app_store.py)
-    langsung dari GitHub tanpa perlu bash install.sh.
-
-    Return True jika ada file yang diupdate, False jika sudah up-to-date.
-    """
-    if not silent:
-        print(f"\n{B}[*] Checking for core file updates...{R}")
-
     install_dir = None
 
     env_home = os.environ.get("TERMUX_APP_STORE_HOME")
@@ -649,50 +635,34 @@ def cmd_self_update(silent: bool = False) -> bool:
         install_dir = Path(__file__).resolve().parent
 
     updated = []
-    failed  = []
+    has_error = False
 
     for filename, url in _SELF_FILES.items():
         local_path = install_dir / filename
-        if not silent:
-            print(f"  {DIM}Checking {filename}...{R}", end=" ", flush=True)
 
         remote = _fetch_remote_content(url)
 
         if remote is None:
-            if not silent:
-                print(f"{YELLOW}(network error, skipped){R}")
-            failed.append(filename)
+            has_error = True
             continue
 
         if not _files_differ(local_path, remote):
-            if not silent:
-                print(f"{GREEN}up-to-date{R}")
             continue
 
-        # Ada perubahan — overwrite
         try:
             import shutil as _shutil
             backup = local_path.with_suffix(".py.bak")
             if local_path.exists():
                 _shutil.copy2(local_path, backup)
-
             local_path.write_bytes(remote)
-            if not silent:
-                print(f"{GREEN}{B}updated!{R}")
             updated.append(filename)
-        except Exception as e:
-            if not silent:
-                print(f"{RED}write error: {e}{R}")
-            failed.append(filename)
+        except Exception:
+            has_error = True
 
-    if updated:
-        print(f"\n{GREEN}{B}[✔] {len(updated)} core file(s) updated: {', '.join(updated)}{R}")
-        print(f"    {DIM}Backups saved as *.py.bak in {install_dir}{R}\n")
-    elif not failed and not silent:
-        print(f"\n{GREEN}[✔] Core files are already up-to-date.{R}\n")
-
-    if failed and not silent:
-        print(f"{YELLOW}[!] Could not update: {', '.join(failed)} (check internet){R}\n")
+    if updated and not silent:
+        print(f"{GREEN}[✔] App updated to latest version.{R}")
+    elif has_error and not silent:
+        print(f"{YELLOW}[!] Could not check for app updates (network error).{R}")
 
     return bool(updated)
 
