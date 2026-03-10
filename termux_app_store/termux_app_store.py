@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 import asyncio
 import subprocess
-import time
 import sys
 import os
 import json
@@ -20,11 +20,11 @@ try:
         Button,
         ProgressBar,
     )
-    from textual.containers import Horizontal, Vertical, VerticalScroll, Center
+    from textual.containers import Horizontal, Vertical, VerticalScroll
     _TEXTUAL_AVAILABLE = True
 except ImportError:
-    App = object
-    ComposeResult = None
+    App = object  # type: ignore
+    ComposeResult = None  # type: ignore
     _TEXTUAL_AVAILABLE = False
 
     class _Stub:
@@ -34,7 +34,7 @@ except ImportError:
 
     Header = Input = ListView = ListItem = Label = _Stub
     Static = Button = ProgressBar = _Stub
-    Horizontal = Vertical = VerticalScroll = Center = _Stub
+    Horizontal = Vertical = VerticalScroll = _Stub
 
 CACHE_FILE = (
     Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
@@ -188,12 +188,15 @@ def fetch_index_from_github() -> list:
         return []
 
 
-_fetch_index = fetch_index_from_github
 
 
 def ensure_package_files(name: str) -> bool:
     pkg_dir = PACKAGES_DIR / name
     build_sh = pkg_dir / "build.sh"
+
+    if build_sh.exists():
+        return True
+
     url = (
         f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/packages/{name}/build.sh"
     )
@@ -207,8 +210,6 @@ def ensure_package_files(name: str) -> bool:
                 return True
     except Exception:
         pass
-    if build_sh.exists():
-        return True
     return False
 
 def load_index_cache() -> list:
@@ -271,6 +272,7 @@ def get_packages(packages_dir: Path, online: bool = True) -> list:
     if cached:
         return [normalize_pkg(p) for p in cached]
 
+    # Fallback lokal
     raw = load_packages_from_local(packages_dir)
     return [normalize_pkg(p) for p in raw]
 
@@ -292,7 +294,7 @@ class PackageItem(ListItem):
 try:
     from textual.screen import ModalScreen as _ModalScreen
 except ImportError:
-    _ModalScreen = object
+    _ModalScreen = object  # type: ignore
 
 class ConfirmUninstall(_ModalScreen):
 
@@ -300,31 +302,39 @@ class ConfirmUninstall(_ModalScreen):
     ConfirmUninstall {
         align: center middle;
     }
+    #dialog {
         width: 60;
         height: auto;
-        border: heavy
-        background:
+        border: heavy #ff5555;
+        background: #282a36;
         padding: 2 4;
     }
+    #dialog-title {
         text-align: center;
-        color:
+        color: #ff5555;
         text-style: bold;
         margin-bottom: 1;
     }
+    #dialog-msg {
         text-align: center;
-        color:
+        color: #f8f8f2;
         margin-bottom: 2;
     }
+    #dialog-btns {
         align: center middle;
         height: auto;
     }
+    #btn-cancel {
         margin-right: 2;
-        background:
-        color:
+        background: #44475a;
+        color: #f8f8f2;
     }
-        background:
-        color:
+    #btn-cancel:hover { background: #6272a4; }
+    #btn-confirm-uninstall {
+        background: #ff5555;
+        color: #f8f8f2;
     }
+    #btn-confirm-uninstall:hover { background: #ff6e6e; }
     """
 
     def __init__(self, package_name: str):
@@ -352,9 +362,20 @@ class ConfirmUninstall(_ModalScreen):
 class TermuxAppStore(App):
 
     CSS = """
-    Screen { background:
-    ListItem.-highlight { background:
+    Screen { background: #282a36; color: #f8f8f2; }
+    #body { layout: horizontal; height: 1fr; }
+    #left { width: 35%; border: heavy #6272a4; padding: 1; }
+    #right { width: 65%; border: heavy #6272a4; padding: 1; }
+    ListItem.-highlight { background: #44475a; color: #50fa7b; }
     ProgressBar { height: 1; }
+    #footer { height: 1; content-align: center middle; color: #6272a4; }
+    #log-scroll { height: 1fr; border: solid #6272a4; }
+    #btn-row { height: auto; margin-top: 1; }
+    #install { margin-right: 1; }
+    #uninstall { background: #ff5555; color: #f8f8f2; display: none; }
+    #uninstall:hover { background: #ff6e6e; }
+    #uninstall:disabled { background: #44475a; color: #6272a4; }
+    #status-bar { height: 1; content-align: left middle; color: #6272a4; padding-left: 1; }
     """
 
     def on_mount(self): # pragma: no cover
@@ -368,6 +389,7 @@ class TermuxAppStore(App):
 
         self.set_interval(0.1, self.consume_worker_queue)
 
+        # Load packages: coba online dulu, fallback ke cache/lokal
         self.load_packages(online=True)
         self.refresh_list()
 
