@@ -343,6 +343,12 @@ If Termux App Store has been useful to you:
 
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/image?repos=djunekz/termux-app-store&type=date&legend=top-left)](https://www.star-history.com/?repos=djunekz%2Ftermux-app-store&type=date&legend=top-left)
+
+---
+
 <div align="center">
 
 **© Termux App Store — Built for everyone, by the community.**
