@@ -1,23 +1,9 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-03-14T02:23:24.390428+00:00",
-  "total": 31,
+  "generated_at": "2026-03-14T19:20:07.175837+00:00",
+  "total": 30,
   "packages": [
-    {
-      "package": "aircrack-ng",
-      "version": "1.7",
-      "maintainer": "@termux-app-store",
-      "description": "aircrack-ng for termux package",
-      "homepage": "https://github.com/pitube08642/aircrack-ng-for-termux",
-      "license": "UNKNOWN",
-      "download_size": "Unknown",
-      "installed_size": "Unknown",
-      "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://github.com/pitube08642/aircrack-ng-for-termux/releases/download/Aircrack-ng_termux/aircrack-ng_3_1.7_aarch64.deb",
-      "sha256": "809dcc9f0405e170bd1ef8e63d4f7411a49167cee2eb316842e0dd13e3073aa6",
-      "platform_independent": false
-    },
     {
       "package": "ani-cli",
       "version": "4.10",
