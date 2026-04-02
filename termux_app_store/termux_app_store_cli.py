@@ -512,6 +512,21 @@ def cmd_update(packages_dir: Path):
     if raw:
         print(f"{GREEN}[✔] Index updated — {len(raw)} packages found.{R}\n")
         pkgs = [normalize_pkg(p) for p in raw]
+
+        # Bersihkan folder lokal dari package yang sudah dihapus di repo GitHub
+        if packages_dir.exists():
+            import shutil as _shutil
+            index_names = {p.get("package", p.get("name", "")) for p in raw}
+            removed_local = []
+            for pkg_dir in sorted(packages_dir.iterdir()):
+                if pkg_dir.is_dir() and pkg_dir.name not in index_names:
+                    try:
+                        _shutil.rmtree(pkg_dir)
+                        removed_local.append(pkg_dir.name)
+                    except Exception:
+                        pass
+            if removed_local:
+                print(f"{DIM}[*] Removed {len(removed_local)} obsolete local package(s): {', '.join(removed_local)}{R}\n")
     else:
         print(f"{YELLOW}[!] Could not reach GitHub. Using cached index.{R}\n")
         pkgs = get_packages(packages_dir, online=False)
@@ -918,17 +933,7 @@ def load_package(pkg_dir: Path) -> dict:
 def load_all_packages(packages_dir: Path) -> list:
     raw_index = fetch_index()
     if raw_index:
-        index_names = {p.get("package", p.get("name", "")) for p in raw_index}
-        pkgs = [normalize_pkg(p) for p in raw_index]
-        if packages_dir.exists():
-            for pkg_dir in sorted(packages_dir.iterdir()):
-                if not pkg_dir.is_dir():
-                    continue
-                if not (pkg_dir / "build.sh").exists():
-                    continue
-                if pkg_dir.name not in index_names:
-                    pkgs.append(_load_package_from_disk(pkg_dir))
-        return pkgs
+        return [normalize_pkg(p) for p in raw_index]
     pkgs = []
     if not packages_dir.exists():
         return pkgs
