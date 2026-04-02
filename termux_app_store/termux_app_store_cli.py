@@ -513,7 +513,6 @@ def cmd_update(packages_dir: Path):
         print(f"{GREEN}[✔] Index updated — {len(raw)} packages found.{R}\n")
         pkgs = [normalize_pkg(p) for p in raw]
 
-        # Bersihkan folder lokal dari package yang sudah dihapus di repo GitHub
         if packages_dir.exists():
             import shutil as _shutil
             index_names = {p.get("package", p.get("name", "")) for p in raw}
@@ -635,49 +634,65 @@ def _files_differ(local_path: "Path", remote_bytes: bytes) -> bool:
 
 
 def cmd_self_update(silent: bool = False) -> bool:
-    install_dir = None
+    import shutil as _shutil
 
     env_home = os.environ.get("TERMUX_APP_STORE_HOME")
     if env_home:
-        p = Path(env_home).expanduser().resolve()
-        if p.is_dir():
-            install_dir = p
-
-    if install_dir is None and _INSTALL_DIR.is_dir():
+        candidate = Path(env_home).expanduser().resolve()
+        install_dir = candidate if candidate.is_dir() else None
+    elif _INSTALL_DIR.is_dir():
         install_dir = _INSTALL_DIR
-
-    if install_dir is None:
+    else:
         install_dir = Path(__file__).resolve().parent
+
+    this_file = Path(__file__).resolve()
+    file_targets = {}
+    for filename, url in _SELF_FILES.items():
+        if this_file.name == filename:
+            file_targets[filename] = (this_file, url)
+        else:
+            candidate = install_dir / filename
+            if not candidate.exists():
+                candidate = this_file.parent / filename
+            file_targets[filename] = (candidate, url)
 
     updated = []
     has_error = False
 
-    for filename, url in _SELF_FILES.items():
-        local_path = install_dir / filename
-
+    for filename, (local_path, url) in file_targets.items():
         remote = _fetch_remote_content(url)
 
         if remote is None:
             has_error = True
+            if not silent:
+                print(f"{YELLOW}[!] Could not fetch {filename} (network error).{R}")
             continue
 
         if not _files_differ(local_path, remote):
             continue
 
         try:
-            import shutil as _shutil
             backup = local_path.with_suffix(".py.bak")
             if local_path.exists():
                 _shutil.copy2(local_path, backup)
             local_path.write_bytes(remote)
             updated.append(filename)
-        except Exception:
+            if not silent:
+                print(f"{GREEN}[✔] Updated: {filename}{R}")
+        except PermissionError:
             has_error = True
+            if not silent:
+                print(f"{RED}[!] Permission denied writing to {local_path}.{R}")
+                print(f"    Try: {CYAN}chmod u+w {local_path}{R}")
+        except Exception as e:
+            has_error = True
+            if not silent:
+                print(f"{RED}[!] Failed to update {filename}: {e}{R}")
 
-    if updated and not silent:
-        print(f"{GREEN}[✔] App updated to latest version.{R}")
-    elif has_error and not silent:
-        print(f"{YELLOW}[!] Could not check for app updates (network error).{R}")
+    if not updated and not has_error and not silent:
+        print(f"{GREEN}[✔] App files are already up-to-date.{R}")
+    elif updated and not silent:
+        print(f"{GREEN}[✔] App updated: {', '.join(updated)}{R}")
 
     return bool(updated)
 
