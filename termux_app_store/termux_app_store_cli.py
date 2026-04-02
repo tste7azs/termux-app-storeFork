@@ -14,6 +14,9 @@ USAGE:
   termux-app-store help | -h | --help  Show help
 """
 
+# Open Contributor
+# https://github.com/djunekz/termux-app-store
+
 import subprocess
 import sys
 import os
@@ -955,3 +958,6 @@ def load_all_packages(packages_dir: Path) -> list:
             continue
         pkgs.append(_load_package_from_disk(pkg_dir))
     return pkgs
+
+# Open Contributor
+# https://github.com/djunekz/termux-app-store
