@@ -511,7 +511,7 @@ def cmd_update(packages_dir: Path):
 
     raw = fetch_index()
     if raw:
-        print(f"{GREEN}[✔] Index updated — {len(raw)} packages found.{R}\n")
+        print(f"{GREEN}[✔] Files index updated — {len(raw)} packages.{R}\n")
         pkgs = [normalize_pkg(p) for p in raw]
 
         if packages_dir.exists():
