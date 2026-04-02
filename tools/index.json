@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-02T20:11:14.078748+00:00",
-  "total": 25,
+  "generated_at": "2026-04-02T22:15:06.909507+00:00",
+  "total": 24,
   "packages": [
     {
       "package": "ani-cli",
@@ -388,20 +388,6 @@
         "clang",
         "python"
       ]
-    },
-    {
-      "package": "zx",
-      "version": "8.8.5",
-      "maintainer": "@termux-app-store",
-      "description": "A tool for writing better scripts",
-      "homepage": "https://github.com/google/zx",
-      "license": "Apache-2.0",
-      "download_size": "Unknown",
-      "installed_size": "Unknown",
-      "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://api.github.com/repos/google/zx/tarball/${TERMUX_PKG_VERSION}",
-      "sha256": "7d1594daa43df8bf2b49738db628f6d66646e494f3151750c373da012d189976",
-      "platform_independent": false
     }
   ]
 }
