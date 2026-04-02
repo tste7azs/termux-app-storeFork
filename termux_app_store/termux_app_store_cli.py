@@ -767,7 +767,7 @@ def cmd_help():
   {CYAN}show{R} {B}<package>{R}              Show package details
 
 {B}UPDATE COMMANDS:{R}
-  {CYAN}update{R}                      Sync index, update core files + check package updates
+  {CYAN}update{R}                      Update core and check package updates
   {CYAN}upgrade{R}                     Upgrade all outdated packages
   {CYAN}upgrade{R} {B}<package>{R}           Upgrade a specific package
 
