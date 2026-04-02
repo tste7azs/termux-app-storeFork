@@ -506,12 +506,12 @@ def cmd_uninstall(name: str):
 def cmd_update(packages_dir: Path):
     print(f"\n{B}[*] Syncing package index from GitHub...{R}")
 
-    print(f"{DIM}[*] Checking for app file updates...{R}")
+    print(f"{DIM}[*] Updating system core master...{R}")
     cmd_self_update(silent=False)
 
     raw = fetch_index()
     if raw:
-        print(f"{GREEN}[✔] Files index updated — {len(raw)} packages.{R}\n")
+        print(f"{GREEN}[✔] Index updated — {len(raw)} packages found.{R}\n")
         pkgs = [normalize_pkg(p) for p in raw]
 
         if packages_dir.exists():
@@ -673,21 +673,22 @@ def cmd_self_update(silent: bool = False) -> bool:
             local_path.write_bytes(remote)
             updated.append(filename)
             if not silent:
-                print(f"{GREEN}[✔] Updated: {filename}{R}  {DIM}({local_path}){R}")
+                print(f"{DIM}[*] Repacking {filename.replace('.py','')}... Done{R}")
         except PermissionError:
             has_error = True
             if not silent:
-                print(f"{RED}[!] Permission denied: {local_path}{R}")
+                print(f"{RED}[✗] Permission denied updating {filename}.{R}")
                 print(f"    Fix: {CYAN}chmod u+w {local_path}{R}")
         except Exception as e:
             has_error = True
             if not silent:
-                print(f"{RED}[!] Failed to update {filename}: {e}{R}")
+                print(f"{RED}[✗] Failed to update {filename}: {e}{R}")
 
     if not updated and not has_error and not silent:
-        print(f"{GREEN}[✔] App files are already up-to-date.{R}")
+        pass
     elif updated and not silent:
-        print(f"{GREEN}[✔] {len(updated)} file(s) updated. Re-run termux-app-store to use the new version.{R}")
+        print(f"{DIM}[*] Rebuild termux-app-store... Done{R}")
+        print(f"{GREEN}[✔] termux-app-store updated to new version{R}")
 
     return bool(updated)
 
