@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-02T02:36:48.725307+00:00",
-  "total": 30,
+  "generated_at": "2026-04-02T20:11:14.078748+00:00",
+  "total": 25,
   "packages": [
     {
       "package": "ani-cli",
@@ -132,20 +132,6 @@
       "platform_independent": false
     },
     {
-      "package": "ghostrack",
-      "version": "1.0.0",
-      "maintainer": "@termux-app-store",
-      "description": "Useful tool to track location or mobile number",
-      "homepage": "https://github.com/HunxByts/GhostTrack",
-      "license": "MIT",
-      "download_size": "Unknown",
-      "installed_size": "Unknown",
-      "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/ghostrack.tar.gz",
-      "sha256": "43c5fe4734ef358fe17659a08b5846682d43f046e880233503f7412ebbdf1238",
-      "platform_independent": false
-    },
-    {
       "package": "impulse",
       "version": "1.0.0",
       "maintainer": "@termux-app-store",
@@ -177,20 +163,6 @@
       ]
     },
     {
-      "package": "iptrack",
-      "version": "1.0.0",
-      "maintainer": "@termux-app-store",
-      "description": "Track IP Location With Live Address And Accuracy",
-      "homepage": "https://github.com/droidv1/termool",
-      "license": "MIT",
-      "download_size": "Unknown",
-      "installed_size": "Unknown",
-      "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/iptrack.tar.gz",
-      "sha256": "7bbaf211e73e7e9c86eee7138abfaf9ccb9b9ed3f84f3933cb3f60db0e10156b",
-      "platform_independent": false
-    },
-    {
       "package": "lux",
       "version": "0.24.1",
       "maintainer": "@termux-app-store",
@@ -202,20 +174,6 @@
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/iawia002/lux/releases/download/v${TERMUX_PKG_VERSION}/lux_${TERMUX_PKG_VERSION}_Linux_arm64.tar.gz",
       "sha256": "479b09290b8ddda43c994ec5685649eb4635f4bd24ff24e494eddaae473879d7",
-      "platform_independent": false
-    },
-    {
-      "package": "maskphish",
-      "version": "2.0",
-      "maintainer": "@termux-app-store",
-      "description": "URL Making Technology to the world for the very tool for Phishing.",
-      "homepage": "https://github.com/jaykali/maskphish",
-      "license": "MIT",
-      "download_size": "Unknown",
-      "installed_size": "Unknown",
-      "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://api.github.com/repos/jaykali/maskphish/tarball/${TERMUX_PKG_VERSION}",
-      "sha256": "dbace1301bcc946edfd1cc977f9dc9633e198ad035c9f23c69232388b53ae112",
       "platform_independent": false
     },
     {
@@ -351,25 +309,6 @@
       ]
     },
     {
-      "package": "userfinder",
-      "version": "1.0",
-      "maintainer": "@termux-app-store",
-      "description": "OSINT tool for finding profiles by username",
-      "homepage": "https://github.com/mishakorzik/UserFinder",
-      "license": "GPL-3.0",
-      "download_size": "Unknown",
-      "installed_size": "Unknown",
-      "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://github.com/djunekz/archive/releases/download/v1.0.0/userfinder-v${TERMUX_PKG_VERSION}.tar.gz",
-      "sha256": "3341b4fd3c298268522ae34673a1de28e88cf23d8f98ea88e1e59d41e58f3ba7",
-      "platform_independent": false,
-      "depends": [
-        "git",
-        "curl",
-        "jq"
-      ]
-    },
-    {
       "package": "uv",
       "version": "0.10.4",
       "maintainer": "@termux-app-store",
@@ -449,20 +388,6 @@
         "clang",
         "python"
       ]
-    },
-    {
-      "package": "zoravuln",
-      "version": "1.0.0",
-      "maintainer": "@termux-app-store",
-      "description": "Ultimate scanner vulnerability analizer",
-      "homepage": "https://github.com/djunekz/termux-app-store",
-      "license": "MIT",
-      "download_size": "Unknown",
-      "installed_size": "Unknown",
-      "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/zoravuln",
-      "sha256": "e8f3bb069cdd9afbc238c5d55ca0046b35e853590af061261e2d95e4cc8ec89e",
-      "platform_independent": false
     },
     {
       "package": "zx",
