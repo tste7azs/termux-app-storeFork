@@ -7,7 +7,7 @@ USAGE:
   termux-app-store install | i | -i    Install a package
   termux-app-store uninstall           Uninstall a package
   termux-app-store show                Show package details
-  termux-app-store update              Sync index.json terbaru + tampilkan yang ada update
+  termux-app-store update              Update core and checks update packages
   termux-app-store upgrade             Upgrade all outdated packages
   termux-app-store upgrade <pkg>       Upgrade a specific package
   termux-app-store version | -v        Show app version
@@ -511,7 +511,7 @@ def cmd_update(packages_dir: Path):
 
     raw = fetch_index()
     if raw:
-        print(f"{GREEN}[✔] Index updated — {len(raw)} packages found.{R}\n")
+        print(f"{GREEN}[✔] Files index updated — {len(raw)} packages.{R}\n")
         pkgs = [normalize_pkg(p) for p in raw]
 
         if packages_dir.exists():
