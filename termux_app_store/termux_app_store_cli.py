@@ -506,6 +506,7 @@ def cmd_uninstall(name: str):
 def cmd_update(packages_dir: Path):
     print(f"\n{B}[*] Syncing package index from GitHub...{R}")
 
+    print(f"{DIM}[*] Checking for app file updates...{R}")
     cmd_self_update(silent=False)
 
     raw = fetch_index()
@@ -617,9 +618,19 @@ def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
 
 
 def _fetch_remote_content(url: str):
+    import time
+    sep = "&" if "?" in url else "?"
+    bust_url = f"{url}{sep}_cb={int(time.time())}"
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        req = urllib.request.Request(
+            bust_url,
+            headers={
+                "User-Agent": "termux-app-store-cli",
+                "Cache-Control": "no-cache, no-store",
+                "Pragma": "no-cache",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
             data = resp.read()
             return data if data else None
     except Exception:
@@ -636,36 +647,20 @@ def _files_differ(local_path: "Path", remote_bytes: bytes) -> bool:
 def cmd_self_update(silent: bool = False) -> bool:
     import shutil as _shutil
 
-    env_home = os.environ.get("TERMUX_APP_STORE_HOME")
-    if env_home:
-        candidate = Path(env_home).expanduser().resolve()
-        install_dir = candidate if candidate.is_dir() else None
-    elif _INSTALL_DIR.is_dir():
-        install_dir = _INSTALL_DIR
-    else:
-        install_dir = Path(__file__).resolve().parent
+    this_file   = Path(__file__).resolve()
+    app_dir     = this_file.parent
 
-    this_file = Path(__file__).resolve()
-    file_targets = {}
-    for filename, url in _SELF_FILES.items():
-        if this_file.name == filename:
-            file_targets[filename] = (this_file, url)
-        else:
-            candidate = install_dir / filename
-            if not candidate.exists():
-                candidate = this_file.parent / filename
-            file_targets[filename] = (candidate, url)
-
-    updated = []
+    updated   = []
     has_error = False
 
-    for filename, (local_path, url) in file_targets.items():
-        remote = _fetch_remote_content(url)
+    for filename, url in _SELF_FILES.items():
+        local_path = app_dir / filename
 
+        remote = _fetch_remote_content(url)
         if remote is None:
             has_error = True
             if not silent:
-                print(f"{YELLOW}[!] Could not fetch {filename} (network error).{R}")
+                print(f"{YELLOW}[!] Could not fetch {filename} from GitHub.{R}")
             continue
 
         if not _files_differ(local_path, remote):
@@ -678,12 +673,12 @@ def cmd_self_update(silent: bool = False) -> bool:
             local_path.write_bytes(remote)
             updated.append(filename)
             if not silent:
-                print(f"{GREEN}[✔] Updated: {filename}{R}")
+                print(f"{GREEN}[✔] Updated: {filename}{R}  {DIM}({local_path}){R}")
         except PermissionError:
             has_error = True
             if not silent:
-                print(f"{RED}[!] Permission denied writing to {local_path}.{R}")
-                print(f"    Try: {CYAN}chmod u+w {local_path}{R}")
+                print(f"{RED}[!] Permission denied: {local_path}{R}")
+                print(f"    Fix: {CYAN}chmod u+w {local_path}{R}")
         except Exception as e:
             has_error = True
             if not silent:
@@ -692,7 +687,7 @@ def cmd_self_update(silent: bool = False) -> bool:
     if not updated and not has_error and not silent:
         print(f"{GREEN}[✔] App files are already up-to-date.{R}")
     elif updated and not silent:
-        print(f"{GREEN}[✔] App updated: {', '.join(updated)}{R}")
+        print(f"{GREEN}[✔] {len(updated)} file(s) updated. Re-run termux-app-store to use the new version.{R}")
 
     return bool(updated)
 
@@ -767,7 +762,7 @@ def cmd_help():
   {CYAN}show{R} {B}<package>{R}              Show package details
 
 {B}UPDATE COMMANDS:{R}
-  {CYAN}update{R}                      Update core and check package updates
+  {CYAN}update{R}                      Sync index, update core files + check package updates
   {CYAN}upgrade{R}                     Upgrade all outdated packages
   {CYAN}upgrade{R} {B}<package>{R}           Upgrade a specific package
 
