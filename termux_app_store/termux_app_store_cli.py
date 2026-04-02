@@ -507,9 +507,9 @@ def cmd_uninstall(name: str):
 
 
 def cmd_update(packages_dir: Path):
-    print(f"\n{B}[*] Syncing package index from GitHub...{R}")
+    print(f"\n{B}[*] Checking for app file index updates...{R}")
 
-    print(f"{DIM}[*] Updating system core master...{R}")
+    print(f"{DIM}[*] Checking update system core master...{R}")
     cmd_self_update(silent=False)
 
     raw = fetch_index()
