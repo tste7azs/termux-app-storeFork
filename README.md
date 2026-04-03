@@ -70,9 +70,20 @@
 ---
 
 ## Quick Install
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/djunekz/termux-app-store/master/install.sh | bash
+git clone https://github.com/djunekz/termux-app-store
+cd termux-app-store
+bash install.sh
+```
+or
+```bash
+curl -fsSL https://raw.githubusercontent.com/djunekz/termux-app-store/master/install.sh
+```
+or
+```bash
+git clone https://github.com/djunekz/termux-app-store
+cd termux-app-store
+./tasctl install
 ```
 
 Then run:
