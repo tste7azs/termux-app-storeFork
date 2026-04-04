@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dont edit or delete this file
+# Do not edit or delete this file
 # Termux App Store Official
 # Developer: Djunekz
 # https://github.com/djunekz/termux-app-store
@@ -101,11 +101,11 @@ if [[ ! -s "$BUILD_SH" ]] || ! grep -qE '[^[:space:]]' "$BUILD_SH"; then
   echo ""
   printf "  ${BRED}╭─ Error: Empty build script${R}\n"
   printf "  ${BRED}│${R}\n"
-  printf "  ${BRED}│${R}  ${WHITE}File ditemukan tapi tidak ada konten${R}\n"
+  printf "  ${BRED}│${R}  ${WHITE}File found but has no content${R}\n"
   printf "  ${BRED}│${R}\n"
   printf "  ${BRED}│${R}  ${GRAY}File:${R} $BUILD_SH\n"
   printf "  ${BRED}│${R}\n"
-  printf "  ${BRED}│${R}  ${BYELLOW}Minimal isi dengan:${R}\n"
+  printf "  ${BRED}│${R}  ${BYELLOW}Minimum required fields:${R}\n"
   printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_HOMEPAGE=https://example.com${R}\n"
   printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_DESCRIPTION=\"My package\"${R}\n"
   printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_VERSION=1.0.0${R}\n"
@@ -140,7 +140,7 @@ if [[ $? -ne 0 ]] || [[ -n "$_SYNTAX_ERR" ]]; then
       (( _LINENUM++ ))
     done < <(sed -n "${_START},${_END}p" "$BUILD_SH")
     printf "  ${BRED}│${R}\n"
-    printf "  ${BRED}│${R}  ${BYELLOW}Tip:${R} Periksa tanda kutip, kurung kurawal, atau EOF yang tidak lengkap\n"
+    printf "  ${BRED}│${R}  ${BYELLOW}Tip:${R} Check for unmatched quotes, braces, or incomplete EOF\n"
   else
     printf "  ${BRED}│${R}  ${WHITE}$_ERR_MSG${R}\n"
   fi
@@ -152,7 +152,7 @@ fi
 
 _ok "Syntax OK"
 
-# Pastikan PATH selalu include PREFIX/bin supaya tools seperti npm, pip, cargo tersedia
+# Ensure PATH always includes PREFIX/bin so tools like npm, pip, cargo are available
 export PATH="$PREFIX/bin:$PATH"
 
 source "$BUILD_SH"
@@ -160,12 +160,12 @@ source "$BUILD_SH"
 _FIELD_ERRORS=()
 _FIELD_WARNS=()
 
-[[ -z "${TERMUX_PKG_HOMEPAGE:-}"    ]] && _FIELD_ERRORS+=("TERMUX_PKG_HOMEPAGE   │  (empty)  — URL homepage paket")
-[[ -z "${TERMUX_PKG_DESCRIPTION:-}" ]] && _FIELD_ERRORS+=("TERMUX_PKG_DESCRIPTION│  (empty)  — Deskripsi singkat paket")
-[[ -z "${TERMUX_PKG_LICENSE:-}"     ]] && _FIELD_ERRORS+=("TERMUX_PKG_LICENSE    │  (empty)  — Lisensi (MIT, GPL-3.0, dll)")
-[[ -z "${TERMUX_PKG_VERSION:-}"     ]] && _FIELD_ERRORS+=("TERMUX_PKG_VERSION    │  (empty)  — Versi paket (harus mulai angka)")
+[[ -z "${TERMUX_PKG_HOMEPAGE:-}"    ]] && _FIELD_ERRORS+=("TERMUX_PKG_HOMEPAGE   |  (empty)  — Package homepage URL")
+[[ -z "${TERMUX_PKG_DESCRIPTION:-}" ]] && _FIELD_ERRORS+=("TERMUX_PKG_DESCRIPTION|  (empty)  — Short package description")
+[[ -z "${TERMUX_PKG_LICENSE:-}"     ]] && _FIELD_ERRORS+=("TERMUX_PKG_LICENSE    |  (empty)  — License (MIT, GPL-3.0, etc.)")
+[[ -z "${TERMUX_PKG_VERSION:-}"     ]] && _FIELD_ERRORS+=("TERMUX_PKG_VERSION    |  (empty)  — Package version (must start with digit)")
 
-[[ -z "${TERMUX_PKG_MAINTAINER:-}"  ]] && _FIELD_WARNS+=("TERMUX_PKG_MAINTAINER │  (empty)  — Nama/handle maintainer")
+[[ -z "${TERMUX_PKG_MAINTAINER:-}"  ]] && _FIELD_WARNS+=("TERMUX_PKG_MAINTAINER |  (empty)  — Maintainer name/handle")
 
 if [[ ${#_FIELD_ERRORS[@]} -gt 0 ]] || [[ ${#_FIELD_WARNS[@]} -gt 0 ]]; then
   echo ""
@@ -174,25 +174,25 @@ if [[ ${#_FIELD_ERRORS[@]} -gt 0 ]] || [[ ${#_FIELD_WARNS[@]} -gt 0 ]]; then
     echo ""
     printf "  ${BRED}╭─ Field Validation Failed${R}\n"
     printf "  ${BRED}│${R}\n"
-    printf "  ${BRED}│${R}  ${WHITE}Field berikut wajib diisi:${R}\n"
+    printf "  ${BRED}│${R}  ${WHITE}The following fields are required:${R}\n"
     printf "  ${BRED}│${R}\n"
     for _fe in "${_FIELD_ERRORS[@]}"; do
-      _fname=$(echo "$_fe" | cut -d'│' -f1 | xargs)
-      _fdesc=$(echo "$_fe" | cut -d'│' -f2- | xargs)
+      _fname=$(echo "$_fe" | cut -d'|' -f1 | xargs)
+      _fdesc=$(echo "$_fe" | cut -d'|' -f2- | xargs)
       printf "  ${BRED}│${R}  ${BRED}✗${R}  ${BOLD}${BYELLOW}%-28s${R}  ${GRAY}%s${R}\n" "$_fname" "$_fdesc"
     done
     if [[ ${#_FIELD_WARNS[@]} -gt 0 ]]; then
       printf "  ${BRED}│${R}\n"
-      printf "  ${BRED}│${R}  ${WHITE}Field berikut disarankan diisi:${R}\n"
+      printf "  ${BRED}│${R}  ${WHITE}The following fields are recommended:${R}\n"
       printf "  ${BRED}│${R}\n"
       for _fw in "${_FIELD_WARNS[@]}"; do
-        _fname=$(echo "$_fw" | cut -d'│' -f1 | xargs)
-        _fdesc=$(echo "$_fw" | cut -d'│' -f2- | xargs)
+        _fname=$(echo "$_fw" | cut -d'|' -f1 | xargs)
+        _fdesc=$(echo "$_fw" | cut -d'|' -f2- | xargs)
         printf "  ${BRED}│${R}  ${BYELLOW}⚠${R}  ${BOLD}${GRAY}%-28s${R}  ${GRAY}%s${R}\n" "$_fname" "$_fdesc"
       done
     fi
     printf "  ${BRED}│${R}\n"
-    printf "  ${BRED}│${R}  ${GRAY}Contoh build.sh minimal yang valid:${R}\n"
+    printf "  ${BRED}│${R}  ${GRAY}Example of a valid minimal build.sh:${R}\n"
     printf "  ${BRED}│${R}\n"
     printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_HOMEPAGE=https://github.com/user/pkg${R}\n"
     printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_DESCRIPTION=\"A cool package\"${R}\n"
@@ -207,12 +207,12 @@ if [[ ${#_FIELD_ERRORS[@]} -gt 0 ]] || [[ ${#_FIELD_WARNS[@]} -gt 0 ]]; then
     printf "  ${BYELLOW}╭─ Field Warnings${R}\n"
     printf "  ${BYELLOW}│${R}\n"
     for _fw in "${_FIELD_WARNS[@]}"; do
-      _fname=$(echo "$_fw" | cut -d'│' -f1 | xargs)
-      _fdesc=$(echo "$_fw" | cut -d'│' -f2- | xargs)
+      _fname=$(echo "$_fw" | cut -d'|' -f1 | xargs)
+      _fdesc=$(echo "$_fw" | cut -d'|' -f2- | xargs)
       printf "  ${BYELLOW}│${R}  ${BYELLOW}⚠${R}  ${BOLD}${GRAY}%-28s${R}  ${GRAY}%s${R}\n" "$_fname" "$_fdesc"
     done
     printf "  ${BYELLOW}│${R}\n"
-    printf "  ${BYELLOW}╰─ Build dilanjutkan (warnings tidak memblokir build)${R}\n"
+    printf "  ${BYELLOW}╰─ Build continuing (warnings do not block build)${R}\n"
     echo ""
   fi
 fi
@@ -361,34 +361,34 @@ _check_rust_env() {
   _detail "cargo version:" "$cargo_ver"
 
   if [[ "$rustc_ver" != "$cargo_ver" ]]; then
-    _warn "rustc ($rustc_ver) dan cargo ($cargo_ver) versi berbeda"
+    _warn "rustc ($rustc_ver) and cargo ($cargo_ver) version mismatch"
     mismatch=1
   fi
 
   local _tmpdir; _tmpdir=$(mktemp -d)
   printf 'fn main() {}\n' > "$_tmpdir/check.rs"
   if ! (rustc "$_tmpdir/check.rs" -o "$_tmpdir/check_bin" 2>/dev/null); then
-    _warn "rustc compile test gagal — kemungkinan stale cache"
+    _warn "rustc compile test failed — possibly stale cache"
     mismatch=1
   fi
   rm -rf "$_tmpdir"
 
   if [[ "$mismatch" -eq 1 ]]; then
     echo ""
-    printf "  ${BYELLOW}[  !!  ]${R}  ${BOLD}Rust mismatch terdeteksi — update & bersihkan otomatis...${R}\n"
+    printf "  ${BYELLOW}[  !!  ]${R}  ${BOLD}Rust mismatch detected — updating & cleaning automatically...${R}\n"
     echo ""
 
-    _progress "Mengupdate rust (pkg upgrade rust)..."
+    _progress "Updating rust (pkg upgrade rust)..."
     if pkg upgrade -y rust 2>&1 | grep -v "^$"; then
-      _ok "Rust diupdate"
+      _ok "Rust updated"
     else
-      _warn "pkg upgrade rust gagal, melanjutkan dengan versi saat ini"
+      _warn "pkg upgrade rust failed, continuing with current version"
     fi
 
     if [[ -d "$HOME/.cargo/registry/src" ]]; then
-      _progress "Menghapus registry/src cache yang stale..."
+      _progress "Removing stale registry/src cache..."
       rm -rf "$HOME/.cargo/registry/src/"
-      _ok "registry/src dibersihkan"
+      _ok "registry/src cleaned"
     fi
 
     rm -f "$HOME/.cargo/.package-cache" 2>/dev/null || true
@@ -406,7 +406,7 @@ _check_rust_env() {
 
     local rustc_ver_new
     rustc_ver_new=$(rustc --version 2>/dev/null | awk '{print $2}' || echo "unknown")
-    _ok "Rust environment bersih (rustc $rustc_ver_new)"
+    _ok "Rust environment clean (rustc $rustc_ver_new)"
 
     echo ""
     printf "  ${BCYAN}[  >>  ]${R}  ${BOLD}Restarting build...${R}\n"
@@ -469,12 +469,12 @@ if [[ -n "${TERMUX_PKG_SRCURL:-}" ]]; then
     echo ""
     printf "  ${BRED}╭─ Security Error${R}\n"
     printf "  ${BRED}│${R}\n"
-    printf "  ${BRED}│${R}  ${WHITE}SHA256 wajib diisi untuk verifikasi integritas file${R}\n"
+    printf "  ${BRED}│${R}  ${WHITE}SHA256 is required to verify file integrity${R}\n"
     printf "  ${BRED}│${R}\n"
-    printf "  ${BRED}│${R}  ${GRAY}File yang didownload:${R} $(du -sh "$SRC_FILE" | awk '{print $1}')\n"
+    printf "  ${BRED}│${R}  ${GRAY}Downloaded file:${R} $(du -sh "$SRC_FILE" | awk '{print $1}')\n"
     printf "  ${BRED}│${R}  ${GRAY}SHA256:${R}  ${BGREEN}$_CALC${R}\n"
     printf "  ${BRED}│${R}\n"
-    printf "  ${BRED}│${R}  ${BYELLOW}Tambahkan baris berikut ke build.sh:${R}\n"
+    printf "  ${BRED}│${R}  ${BYELLOW}Add the following line to build.sh:${R}\n"
     printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_SHA256=%s${R}\n" "$_CALC"
     printf "  ${BRED}│${R}\n"
     printf "  ${BRED}╰─ Fix in: ${BCYAN}$BUILD_SH${R}\n"
@@ -607,7 +607,7 @@ if [[ -n "$PREBUILT_DEB" ]]; then
 
       CLEANED_DEPS=$(echo "$COMBINED_DEPS" | sed -e 's/([^)]*)//g' -e 's/|/,/g' -e 's/  */ /g' | tr -d ' ')
 
-      # Install dependencies yang belum ada
+      # Install missing dependencies
       _progress "Installing missing dependencies from .deb..."
       IFS=',' read -ra _AUTO_DEPS <<< "$CLEANED_DEPS"
 
@@ -649,7 +649,7 @@ if declare -f termux_step_make > /dev/null 2>&1; then
   _MAKE_LOG=$(mktemp)
   _MAKE_EXIT=0
 
-  # Spinner saat build
+  # Build spinner
   _spin_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   _spin_i=0
   ( export PATH="$PREFIX/bin:$PATH"; termux_step_make ) > "$_MAKE_LOG" 2>&1 &
@@ -674,7 +674,7 @@ if declare -f termux_step_make > /dev/null 2>&1; then
     echo "$_MAKE_OUTPUT" | tail -10 | while IFS= read -r line; do
       printf "  ${BRED}│${R}  %s\n" "$line"
     done
-    printf "  ${BRED}╰─ Fix: periksa ${BCYAN}$BUILD_SH${R}\n"
+    printf "  ${BRED}╰─ Fix: check ${BCYAN}$BUILD_SH${R}\n"
     echo ""
     cd "$ROOT_DIR"
     exit 1
@@ -698,25 +698,25 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
   _progress "Extracting .deb contents..."
   dpkg -x "$PREBUILT_DEB" "$WORK_DIR/pkg"
 
-  # Cari binary/script di dalam .deb — cek bin/ dulu, lalu fallback ke file apapun
+  # Find binary/script inside .deb — check bin/ first, then fallback to any file
   BIN_FILE="$(find "$WORK_DIR/pkg" -type f -name "$PACKAGE*" -executable | head -n1 || true)"
 
-  # Fallback 1: ada file di bin/ walaupun tidak executable
+  # Fallback 1: file exists in bin/ even if not executable
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -path "*/bin/$PACKAGE" | head -n1 || true)"
 
-  # Fallback 2: ada wrapper script di bin/ dengan nama apapun
+  # Fallback 2: any wrapper script in bin/
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -path "*/bin/*" | head -n1 || true)"
 
-  # Fallback 3: ada .py atau .sh di lib/
+  # Fallback 3: .py or .sh file in lib/
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f \( -name "*.py" -o -name "*.sh" \) | head -n1 || true)"
 
-  # Fallback 4: file apapun yang ada
+  # Fallback 4: any file available
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -not -path "*/DEBIAN/*" | head -n1 || true)"
 
   if [[ -n "$BIN_FILE" ]]; then
     mkdir -p "$PREFIX/lib/$PACKAGE"
 
-    # Deteksi tipe file untuk tentukan cara install
+    # Detect file type to determine install method
     _BIN_EXT="${BIN_FILE##*.}"
     _IS_SCRIPT=0
     _SCRIPT_INTERPRETER=""
@@ -728,7 +728,7 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
       _IS_SCRIPT=1
       _SCRIPT_INTERPRETER="bash"
     else
-      # Cek shebang
+      # Check shebang
       _SHEBANG=$(head -c 512 "$BIN_FILE" 2>/dev/null | head -n1 || true)
       if echo "$_SHEBANG" | grep -q "python"; then
         _IS_SCRIPT=1
@@ -740,7 +740,7 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
     fi
 
     if [[ "$_IS_SCRIPT" -eq 1 ]]; then
-      # Script — copy ke lib/ dan buat wrapper langsung tanpa perlu cek libpython
+      # Script — copy to lib/ and create wrapper without needing libpython check
       cp "$BIN_FILE" "$PREFIX/lib/$PACKAGE/$(basename $BIN_FILE)"
       chmod 644 "$PREFIX/lib/$PACKAGE/$(basename $BIN_FILE)"
       mkdir -p "$PREFIX/bin"
@@ -757,9 +757,9 @@ EOF
       mv "$BIN_FILE" "$PREFIX/lib/$PACKAGE/$PACKAGE"
       chmod +x "$PREFIX/lib/$PACKAGE/$PACKAGE"
 
-    # Cek apakah binary ini linked ke libpython versi spesifik
-    # Kalau iya, jangan exec langsung — buat wrapper python3 supaya
-    # tidak terikat ke versi Python tertentu (misal libpython3.12.so)
+    # Check if binary is linked to a specific libpython version
+    # If so, don't exec directly — create a python3 wrapper so
+    # it's not tied to a specific Python version (e.g., libpython3.12.so)
     _LINKED_PYTHON=""
     if command -v readelf &>/dev/null; then
       _LINKED_PYTHON=$(readelf -d "$PREFIX/lib/$PACKAGE/$PACKAGE" 2>/dev/null         | grep -oP "libpython[0-9]+\.[0-9]+[^]]*" | head -n1 || true)
@@ -768,25 +768,25 @@ EOF
     fi
 
     if [[ -n "$_LINKED_PYTHON" ]]; then
-      # Binary linked ke libpython versi spesifik.
-      # Solusi: buat symlink dari libpython yang terinstall saat ini
-      # ke nama yang dibutuhkan binary. Ini cara paling reliable dan permanen
-      # karena Python di Termux selalu ada satu versi aktif.
+      # Binary linked to a specific libpython version.
+      # Solution: create a symlink from the currently installed libpython
+      # to the name the binary needs. This is the most reliable and permanent approach
+      # since Termux always has one active Python version.
 
       _PY_VER=$(echo "$_LINKED_PYTHON" | grep -oP "[0-9]+\.[0-9]+" | head -n1 || true)
 
-      # Cek apakah libpython yang dibutuhkan sudah ada
+      # Check if the required libpython already exists
       _LIB_NEEDED="$PREFIX/lib/libpython${_PY_VER}.so.1.0"
       _LIB_EXISTS=0
       find "$PREFIX/lib" -name "libpython${_PY_VER}*.so*" 2>/dev/null | grep -q . && _LIB_EXISTS=1
 
       if [[ "$_LIB_EXISTS" -eq 0 && -n "$_PY_VER" ]]; then
-        # Cari libpython versi lain yang terinstall (misal libpython3.13.so.1.0)
+        # Find another installed libpython version (e.g., libpython3.13.so.1.0)
         _INSTALLED_LIBPY=$(find "$PREFIX/lib" -maxdepth 1 -name "libpython*.so.1.0" \
           2>/dev/null | head -n1 || true)
 
         if [[ -n "$_INSTALLED_LIBPY" ]]; then
-          # Buat symlink: libpython3.12.so.1.0 → libpython3.13.so.1.0 (atau versi apapun)
+          # Create symlink: libpython3.12.so.1.0 → libpython3.13.so.1.0 (or whichever version)
           ln -sf "$_INSTALLED_LIBPY" "$_LIB_NEEDED" 2>/dev/null && {
             _ok "Symlinked: libpython${_PY_VER}.so.1.0 → $(basename $_INSTALLED_LIBPY)"
           } || {
@@ -861,43 +861,43 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
     if echo "$_INSTALL_OUTPUT" | grep -q "ENOENT.*package.json"; then
       printf "  ${BRED}╭─ Error: package.json not found${R}\n"
       printf "  ${BRED}│${R}\n"
-      printf "  ${BRED}│${R}  ${WHITE}npm tidak bisa menemukan package.json di source dir${R}\n"
+      printf "  ${BRED}│${R}  ${WHITE}npm could not find package.json in source dir${R}\n"
       printf "  ${BRED}│${R}\n"
       printf "  ${BRED}│${R}  ${GRAY}Source dir:${R} $_install_dir\n"
       printf "  ${BRED}│${R}\n"
-      printf "  ${BRED}│${R}  ${GRAY}Isi direktori source:${R}\n"
+      printf "  ${BRED}│${R}  ${GRAY}Source directory contents:${R}\n"
       find "$_install_dir" -maxdepth 3 -not -path "*/node_modules/*" \
         | sed "s|$_install_dir||" \
         | sed 's/^/  │    /' \
         | while IFS= read -r line; do printf "  ${BRED}│${R}${GRAY}%s${R}\n" "$line"; done
       printf "  ${BRED}│${R}\n"
-      printf "  ${BRED}│${R}  ${BYELLOW}Kemungkinan penyebab:${R}\n"
-      printf "  ${BRED}│${R}  • package.json tidak ada di root repo — cek struktur repo di GitHub\n"
-      printf "  ${BRED}│${R}  • TERMUX_PKG_SRCURL mengarah ke tarball yang salah\n"
-      printf "  ${BRED}│${R}  • Paket ini bukan Node.js package standar\n"
-      printf "  ${BRED}╰─ Fix: periksa ${BCYAN}$BUILD_SH${R}\n"
+      printf "  ${BRED}│${R}  ${BYELLOW}Possible causes:${R}\n"
+      printf "  ${BRED}│${R}  • package.json not found in repo root — check repo structure on GitHub\n"
+      printf "  ${BRED}│${R}  • TERMUX_PKG_SRCURL points to the wrong tarball\n"
+      printf "  ${BRED}│${R}  • This package is not a standard Node.js package\n"
+      printf "  ${BRED}╰─ Fix: check ${BCYAN}$BUILD_SH${R}\n"
 
     elif echo "$_INSTALL_OUTPUT" | grep -q "Cannot find module\|MODULE_NOT_FOUND"; then
       printf "  ${BRED}╭─ Error: npm module not found${R}\n"
-      printf "  ${BRED}│${R}  Missing dependency saat install\n"
+      printf "  ${BRED}│${R}  Missing dependency during install\n"
       printf "  ${BRED}│${R}\n"
-      printf "  ${BRED}│${R}  ${BYELLOW}Coba tambahkan ke TERMUX_PKG_DEPENDS di build.sh:${R}\n"
+      printf "  ${BRED}│${R}  ${BYELLOW}Try adding to TERMUX_PKG_DEPENDS in build.sh:${R}\n"
       printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_DEPENDS=\"nodejs\"${R}\n"
-      printf "  ${BRED}╰─ Fix: periksa ${BCYAN}$BUILD_SH${R}\n"
+      printf "  ${BRED}╰─ Fix: check ${BCYAN}$BUILD_SH${R}\n"
 
     elif echo "$_INSTALL_OUTPUT" | grep -q "EACCES\|permission denied"; then
       printf "  ${BRED}╭─ Error: Permission denied${R}\n"
-      printf "  ${BRED}│${R}  npm tidak punya akses tulis ke PREFIX\n"
+      printf "  ${BRED}│${R}  npm does not have write access to PREFIX\n"
       printf "  ${BRED}│${R}\n"
       printf "  ${BRED}│${R}  ${GRAY}PREFIX:${R} $PREFIX\n"
       printf "  ${BRED}╰─ Cek permission direktori PREFIX${R}\n"
 
     elif echo "$_INSTALL_OUTPUT" | grep -q "ENOTFOUND\|network\|ETIMEDOUT"; then
       printf "  ${BRED}╭─ Error: Network issue${R}\n"
-      printf "  ${BRED}│${R}  npm tidak bisa connect ke registry\n"
+      printf "  ${BRED}│${R}  npm cannot connect to the registry\n"
       printf "  ${BRED}│${R}\n"
-      printf "  ${BRED}│${R}  ${GRAY}Cek koneksi internet dan coba lagi${R}\n"
-      printf "  ${BRED}╰─ Atau set npm registry: npm config set registry https://registry.npmjs.org${R}\n"
+      printf "  ${BRED}│${R}  ${GRAY}Check your internet connection and try again${R}\n"
+      printf "  ${BRED}╰─ Or set the npm registry: npm config set registry https://registry.npmjs.org${R}\n"
 
     elif echo "$_INSTALL_OUTPUT" | grep -qE "^make.*Error|CMake Error|gcc.*error:|undefined reference"; then
       printf "  ${BRED}╭─ Error: Build/Compile failed${R}\n"
@@ -907,9 +907,9 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
         printf "  ${BRED}│${R}  ${BYELLOW}%s${R}\n" "$line"
       done <<< "$_ERR_LINES"
       printf "  ${BRED}│${R}\n"
-      printf "  ${BRED}│${R}  ${BYELLOW}Pastikan build tools terinstall:${R}\n"
+      printf "  ${BRED}│${R}  ${BYELLOW}Make sure build tools are installed:${R}\n"
       printf "  ${BRED}│${R}  ${GRAY}pkg install build-essential cmake${R}\n"
-      printf "  ${BRED}╰─ Fix: periksa ${BCYAN}$BUILD_SH${R}\n"
+      printf "  ${BRED}╰─ Fix: check ${BCYAN}$BUILD_SH${R}\n"
 
     else
       printf "  ${BRED}╭─ Install output (last 10 lines):${R}\n"
@@ -988,7 +988,7 @@ else
     if ! command -v npm &>/dev/null; then
       _fatal "npm not found — install nodejs first"
       printf "  ${BRED}╭─ Fix${R}\n"
-      printf "  ${BRED}│${R}  Tambahkan ke build.sh:\n"
+      printf "  ${BRED}│${R}  Add to build.sh:\n"
       printf "  ${BRED}│${R}  ${GRAY}TERMUX_PKG_DEPENDS=\"nodejs\"${R}\n"
       printf "  ${BRED}╰─${R}\n"
       exit 1
@@ -1225,16 +1225,16 @@ else
     _BIN_PATH="$PREFIX/bin/$PACKAGE"
   else
     echo ""
-    _warn "Binary '$PACKAGE' tidak ditemukan di PATH setelah install"
+    _warn "Binary '$PACKAGE' not found in PATH after install"
     echo ""
     printf "  ${BYELLOW}╭─ Warning: Package installed but command not found${R}\n"
     printf "  ${BYELLOW}│${R}\n"
-    printf "  ${BYELLOW}│${R}  .deb berhasil dibuat dan diinstall, tapi command ${BOLD}$PACKAGE${R} tidak tersedia.\n"
+    printf "  ${BYELLOW}│${R}  .deb was built and installed, but command ${BOLD}$PACKAGE${R} is not available.\n"
     printf "  ${BYELLOW}│${R}\n"
-    printf "  ${BYELLOW}│${R}  ${GRAY}Kemungkinan penyebab:${R}\n"
+    printf "  ${BYELLOW}│${R}  ${GRAY}Possible causes:${R}\n"
     printf "  ${BYELLOW}│${R}  • Package adalah library (bukan CLI tool)\n"
     printf "  ${BYELLOW}│${R}  • Nama binary berbeda dari nama package\n"
-    printf "  ${BYELLOW}│${R}  • Install mode tidak meletakkan binary di bin/\n"
+    printf "  ${BYELLOW}│${R}  • Install mode did not place binary in bin/\n"
     printf "  ${BYELLOW}│${R}\n"
     printf "  ${BYELLOW}│${R}  ${GRAY}Cek isi .deb:${R}\n"
     printf "  ${BYELLOW}│${R}  ${GRAY}$ dpkg -L $PACKAGE${R}\n"
