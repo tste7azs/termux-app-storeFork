@@ -8,17 +8,25 @@ and this project adheres to semantic versioning.
 
 ## [Unreleased]
 
+---
+
+## [v0.2.3] - 2026-04-06
 ### Update
+- Update system core `termux-app-store update`
+- Support installer with `pip install termux-app-store`
+- `main.py` `termux_app_store.py` `termux_app_store_cli.py` resolve app
 - Package `tdoc` v1.0.5 → v1.0.6
 - Package `basic` v1.0.0 → v1.0.2
 
 ### Added
 - Package `basic` v1.0.0 - Simulator Terminal learning basic command for beginner
-- Package `userfinder` v1.0 - OSINT tool for finding profiles by username
 - Package `cybertuz` v1.0.1 - Comprehensive Educational Learning Platform for Termux
 
 ### Changed
 - Package `basic` v1.2.0 - Updated metadata
+
+### Remove
+- All ilegal packages
 
 ---
 
