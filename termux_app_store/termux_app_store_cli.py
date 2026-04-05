@@ -104,12 +104,14 @@ def has_store_fingerprint(path: Path) -> bool:
 
 
 def is_valid_root(path: Path) -> bool:
-    return (
-        path.is_dir()
-        and (path / "packages").is_dir()
-        and (path / "build-package.sh").is_file()
-        and has_store_fingerprint(path)
-    )
+    if not path.is_dir():
+        return False
+    if not (path / "packages").is_dir():
+        return False
+    pip_home = Path.home() / ".termux-app-store"
+    if path.resolve() == pip_home.resolve():
+        return True
+    return (path / "build-package.sh").is_file() and has_store_fingerprint(path)
 
 
 def load_cached_root():
@@ -160,6 +162,26 @@ def resolve_app_root() -> Path:
     (pip_home / "packages").mkdir(exist_ok=True)
     save_cached_root(pip_home)
     return pip_home
+
+
+def ensure_build_package_sh(app_root: Path) -> bool:
+    build_pkg = app_root / "build-package.sh"
+    if build_pkg.exists():
+        return True
+    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/build-package.sh"
+    try:
+        print(f"{DIM}[*] Downloading build-package.sh...{R}")
+        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+            if raw:
+                build_pkg.write_bytes(raw)
+                build_pkg.chmod(0o755)
+                print(f"{GREEN}[✔] build-package.sh downloaded.{R}")
+                return True
+    except Exception as e:
+        print(f"{RED}[✗] Failed to download build-package.sh: {e}{R}")
+    return False
 
 
 def fetch_index() -> list:
@@ -436,6 +458,10 @@ def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = Fa
     if not ensure_package_files(packages_dir, name):
         print(f"{RED}[✗] Failed to download build files for '{name}'.{R}")
         print(f"    Check your internet connection or try again later.")
+        return False
+
+    if not ensure_build_package_sh(app_root):
+        print(f"{RED}[✗] Cannot proceed without build-package.sh.{R}")
         return False
 
     proc = subprocess.Popen(
