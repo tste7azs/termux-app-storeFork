@@ -144,19 +144,22 @@ def resolve_app_root() -> Path:
     if cached:
         return cached
 
-    base = (
-        Path(sys.executable).resolve().parent
-        if getattr(sys, "frozen", False)
-        else Path(__file__).resolve().parent
-    )
+    if getattr(sys, "frozen", False):
+        base = Path(sys.executable).resolve().parent
+        if is_valid_root(base):
+            save_cached_root(base)
+            return base
 
-    if is_valid_root(base):
-        save_cached_root(base)
-        return base
+    source_base = Path(__file__).resolve().parent.parent
+    if is_valid_root(source_base):
+        save_cached_root(source_base)
+        return source_base
 
-    print(f"{RED}[!] Cannot find termux-app-store root.{R}")
-    print(f"    Set: {CYAN}export TERMUX_APP_STORE_HOME=/path/to/termux-app-store{R}")
-    sys.exit(1)
+    pip_home = Path.home() / ".termux-app-store"
+    pip_home.mkdir(parents=True, exist_ok=True)
+    (pip_home / "packages").mkdir(exist_ok=True)
+    save_cached_root(pip_home)
+    return pip_home
 
 
 def fetch_index() -> list:
@@ -809,8 +812,8 @@ def run_cli():
 
     if not args:
         try:
-            from termux_app_store import TermuxAppStore
-            TermuxAppStore().run()
+            from termux_app_store.termux_app_store import run_tui
+            run_tui()
         except ImportError:
             print(f"{RED}[!] TUI module not found.{R}")
             cmd_help()
