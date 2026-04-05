@@ -70,16 +70,22 @@
 ---
 
 ## Quick Install
+
+### Option 1 (Recommended)
+```bash
+pkg install python curl rust
+pip install textual rich termux-app-store
+```
+
+### Option 2 (Manual)
 ```bash
 git clone https://github.com/djunekz/termux-app-store
 cd termux-app-store
 bash install.sh
 ```
+
 or
-```bash
-curl -fsSL https://raw.githubusercontent.com/djunekz/termux-app-store/master/install.sh
-```
-or
+
 ```bash
 git clone https://github.com/djunekz/termux-app-store
 cd termux-app-store
@@ -91,6 +97,19 @@ Then run:
 ```bash
 termux-app-store        # Open interactive TUI
 termux-app-store -h     # Show CLI help
+```
+
+---
+
+## Uninstall
+```bash
+pip uninstall termux-app-store
+```
+
+or
+
+```bash
+./tasctl uninstall
 ```
 
 ---
