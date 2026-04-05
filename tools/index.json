@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-05T02:47:20.885456+00:00",
-  "total": 24,
+  "generated_at": "2026-04-05T19:19:51.227648+00:00",
+  "total": 25,
   "packages": [
     {
       "package": "ani-cli",
@@ -101,6 +101,27 @@
       "platform_independent": false,
       "depends": [
         "nodejs"
+      ]
+    },
+    {
+      "package": "cybertuz",
+      "version": "1.0.1",
+      "maintainer": "@termux-app-store",
+      "description": "Comprehensive Educational Learning Platform for Termux",
+      "homepage": "https://github.com/djunekz/cybertuz",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/djunekz/cybertuz/archive/refs/tags/v{$TERMUX_PKG_VERSION}.tar.gz",
+      "sha256": "de6f948ecfe97e875bdbabe2073671da29a8521de465ad6a577476749a9fef59",
+      "platform_independent": false,
+      "depends": [
+        "nmap",
+        "python",
+        "whois",
+        "curl",
+        "dnsutils"
       ]
     },
     {
