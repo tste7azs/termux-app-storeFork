@@ -15,6 +15,7 @@ and this project adheres to semantic versioning.
 ### Added
 - Package `basic` v1.0.0 - Simulator Terminal learning basic command for beginner
 - Package `userfinder` v1.0 - OSINT tool for finding profiles by username
+- Package `cybertuz` v1.0.1 - Comprehensive Educational Learning Platform for Termux
 
 ### Changed
 - Package `basic` v1.2.0 - Updated metadata
