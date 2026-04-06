@@ -1,26 +1,26 @@
 # Contributing to Termux App Store
 
-Thank you for your interest in contributing to **Termux App Store** 🎉  
+Thank you for your interest in contributing to **Termux App Store**
 This project is a **community-driven infrastructure** for building and validating Termux packages.  
 We welcome contributions of all kinds, as long as they follow the standards described below.
 
 ---
 
-## 📌 Contribution Scope
+## Contribution Scope
 
 You may contribute in one or more of the following areas:
 
-- 📦 New Termux packages (`packages/<name>`)
-- 🔧 Improvements to existing `build.sh`
-- 🧪 CI / validation logic
-- 🛠 CLI tooling (`termux-build`, `tasctl`)
-- 📚 Documentation & guides
-- 🐞 Bug reports & fixes
-- 💡 Feature proposals
+- New Termux packages (`packages/<name>`)
+- Improvements to existing `build.sh`
+- CI / validation logic
+- CLI tooling (`termux-build`, `tasctl`)
+- Documentation & guides
+- Bug reports & fixes
+- Feature proposals
 
 ---
 
-## 🧭 Repository Structure Overview
+## Repository Structure Overview
 
 ```text
 packages/
@@ -32,7 +32,7 @@ tasctl         # CLI controller
 
 ---
 
-## 🧱 Contribution Principles
+## Contribution Principles
 All contributions must follow these principles:
 1. **Automation-first** – If it can be validated, it must be validated.
 2. **Reproducibility** – Builds must be deterministic.
@@ -41,7 +41,7 @@ All contributions must follow these principles:
 
 ---
 
-## 📦 Adding a New Package
+## Adding a New Package
 1. Package Layout
 ```text
 packages/<pkg-name>/build.sh
@@ -65,11 +65,11 @@ or auto create build package
 ./termux-build lint <pkg-name>
 ./termux-build check-pr <pkg-name>
 ```
-⚠️ CI will reject PRs that fail validation.
+CI will reject PRs that fail validation.
 
 ---
 
-## 🧪 CI & Quality Gates
+## CI & Quality Gates
 All pull requests are automatically checked via GitHub Actions:
 - Linting packages
 - Validating build.sh
@@ -79,7 +79,7 @@ A pull request **cannot be merged** if any CI check fails.
 
 ---
 
-## 🧵 Commit Message Convention
+## Commit Message Convention
 Use clear and structured commit messages:
 ```text
 <type>: <short description>
@@ -101,7 +101,7 @@ fix: validate TERMUX_PKG_VERSION format
 
 ---
 
-## 🔀 Pull Request Guidelines
+## Pull Request Guidelines
 Before submitting a PR, ensure:
 - [x] CI passes locally
 - [x] No unrelated changes
@@ -115,7 +115,7 @@ fix: correct build dependency detection
 
 ---
 
-## 🏷 Issue Labels & Workflow
+## Issue Labels & Workflow
 Maintainers may assign labels such as:
 - good first issue
 - help wanted
@@ -126,7 +126,7 @@ Please follow the issue template when reporting bugs or requesting features.
 
 ---
 
-## 🚨 Breaking Changes Policy
+## Breaking Changes Policy
 Breaking changes must:
 1. Be discussed via an issue first
 2. Be clearly marked in the PR
@@ -134,7 +134,7 @@ Breaking changes must:
 
 ---
 
-## 🔐 Security & Trust
+## Security & Trust
 - Do NOT submit malicious code
 - No malware scripts
 - No backdoors
@@ -144,18 +144,18 @@ Use the contact method defined in [SECURITY.md](SECURITY.md).
 
 ---
 
-## 📜 License Agreement
+## License Agreement
 By contributing, you agree that your contributions will be licensed under the same license as this repository.
 
 ---
 
-## 🤝 Code of Conduct
+## Code of Conduct
 All contributors must follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 Harassment, discrimination, or abuse will not be tolerated.
 
 ---
 
-## 💬 Need Help?
+## Need Help?
 - Open a [discussion](https://github.com/djunekz/termux-app-store/discussions)
 - Open a [support request](https://github.com/djunekz/termux-app-store/issues)
 - Or ask via an issue using the provided templates
@@ -163,5 +163,5 @@ We value **quality** over **quantity** and **collaboration** over speed.
 
 ---
 
-## 🚀 Welcome to the Termux App Store community
+## Welcome to the Termux App Store community
 Your contribution helps build a better ecosystem for everyone.
