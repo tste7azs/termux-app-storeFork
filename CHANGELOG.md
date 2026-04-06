@@ -10,6 +10,21 @@ and this project adheres to semantic versioning.
 
 ---
 
+## [v0.2.4] - 2026-04-07
+### Update
+- Change log message format in CLI
+- Repack and download build-package for installer package
+- Fixed bug not found `build-package` before install package
+- Fixed bug installer in TUI and CLI
+- Fixed fetch bug version
+- Auto update core to source with `termux-app-store update`
+- Update formating docs
+- Update source version to `__init__.py` or `pyproject.toml`
+- Update support installer manual (git clone) or auto (pip install)
+- Fixed crash launcher and intaller packages
+
+---
+
 ## [v0.2.3] - 2026-04-06
 ### Update
 - Update system core `termux-app-store update`
