@@ -6,7 +6,7 @@ This document explains what data is (and is not) collected when you use this sof
 
 ---
 
-## 🔒 Offline-First Design
+## Offline-First Design
 
 Termux App Store is designed to operate **locally on your device**.
 
@@ -19,7 +19,7 @@ The application does **not** intentionally collect personal data.
 
 ---
 
-## 📡 Network Access
+## Network Access
 
 Network access may occur **only** for the following purposes:
 
@@ -34,7 +34,7 @@ All network activity is:
 
 ---
 
-## 📁 Local Data Storage
+## Local Data Storage
 
 The application may store the following **locally** on your device:
 
@@ -51,7 +51,7 @@ All stored data:
 
 ---
 
-## 🧠 No Personal Data Collection
+## No Personal Data Collection
 
 Termux App Store does **not** collect, store, or transmit:
 
@@ -65,7 +65,7 @@ Termux App Store does **not** collect, store, or transmit:
 
 ---
 
-## 🔐 Third-Party Code & Dependencies
+## Third-Party Code & Dependencies
 
 Package builds may include third-party source code.
 
@@ -75,7 +75,7 @@ Package builds may include third-party source code.
 
 ---
 
-## 🧪 Binary Releases
+## Binary Releases
 
 Binary distributions:
 
@@ -87,7 +87,7 @@ However, binaries may include bundled dependencies that behave according to thei
 
 ---
 
-## 🛡️ Security Practices
+## Security Practices
 
 While reasonable precautions are taken:
 
@@ -102,7 +102,7 @@ Users are encouraged to:
 
 ---
 
-## 🧾 Data Deletion
+## Data Deletion
 
 To remove all data related to Termux App Store:
 
@@ -114,7 +114,7 @@ No residual data is intentionally retained.
 
 ---
 
-## 🔄 Policy Changes
+## Policy Changes
 
 This privacy policy may be updated without notice.
 
@@ -122,7 +122,7 @@ Changes take effect immediately upon publication in the repository.
 
 ---
 
-## 📌 Acceptance
+## Acceptance
 
 By using Termux App Store, you acknowledge that:
 
