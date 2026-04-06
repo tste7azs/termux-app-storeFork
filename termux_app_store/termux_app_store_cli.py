@@ -740,21 +740,44 @@ def cmd_version():
             pass
 
     if not local_ver:
+        try:
+            from termux_app_store import __version__
+            if __version__:
+                local_ver = __version__
+        except Exception:
+            pass
+
+    if not local_ver:
         for f in [
-            INSTALL_DIR / "termux_app_store" / "main.py",
-            INSTALL_DIR / "termux_app_store" / "termux_app_store_cli.py",
-            Path(__file__).resolve().parent / "main.py",
+            INSTALL_DIR / "termux_app_store" / "__init__.py",
+            Path(__file__).resolve().parent / "__init__.py",
         ]:
             if f.exists():
                 try:
-                    m = re.search(r'APP_VERSION\s*=\s*"([0-9.]+)"', f.read_text())
+                    m = re.search(r'^__version__\s*=\s*"([0-9.]+)"', f.read_text(), re.MULTILINE)
                     if m:
                         local_ver = m.group(1)
                         break
                 except Exception:
                     pass
 
-    print(f"\n{B}[*] Fetching latest version from GitHub...{R}")
+    if not local_ver:
+        for f in [
+            INSTALL_DIR / "pyproject.toml",
+            Path(__file__).resolve().parent.parent / "pyproject.toml",
+        ]:
+            if f.exists():
+                try:
+                    m = re.search(r'^version\s*=\s*"([0-9.]+)"', f.read_text(), re.MULTILINE)
+                    if m:
+                        local_ver = m.group(1)
+                        break
+                except Exception:
+                    pass
+
+    print(f"\n{B}[*] Checking version termux-app-store...{R}")
+    print(f"{B}[*] Checking installed version...{R}")
+    print(f"{B}[*] Fetching latest version...{R}")
     remote_tag = fetch_latest_tag()
     remote_ver = remote_tag.lstrip("v") if remote_tag else None
 
