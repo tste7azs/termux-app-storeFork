@@ -1,100 +1,127 @@
-# Cara Upload File (Package) ke Repository
-Berikut langkah umum untuk meng-upload tool/package ke repository Termux App Store:
+# How to Upload a Package to the Repository
 
-## 1. Fork Repository
-- Buka repository tujuan
-- Klik tombol `Fork` (gambar garpu) yang ada di atas
-- Pastikan nama repositorinya `termux-app-store`
-- Klik `Create fork`
+Follow these steps to upload your tool or package to the Termux App Store repository.
 
-## 2. Clone Repository
-```Bash
-git clone https://github.com/USERNAME_KAMU/termux-app-store.git
+## 1. Fork the Repository
+
+- Open the target repository
+- Click the `Fork` button (fork icon) at the top of the page
+- Make sure the repository name is `termux-app-store`
+- Click `Create fork`
+
+## 2. Clone the Repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/termux-app-store.git
 cd termux-app-store
 ```
-`USERNAME_KAMU` = ganti dengan username kamu
 
-## 3. Buat Branch Baru
-```Bash
-git checkout -b <nama-package>
-```
-Contoh:
-```Bash
-git checkout -b contoh
+Replace `YOUR_USERNAME` with your GitHub username.
+
+## 3. Create a New Branch
+
+```bash
+git checkout -b <package-name>
 ```
 
-## 4. Buat Folder Package
-Struktur umum:
-```Text
-packages/<nama-package>/
+Example:
+
+```bash
+git checkout -b example
+```
+
+## 4. Create the Package Folder
+
+General structure:
+
+```text
+packages/<package-name>/
              └── build.sh
 ```
-Contoh:
-```Bash
-mkdir -p packages/contoh
-nano packages/contoh/build.sh
+
+Example:
+
+```bash
+mkdir -p packages/example
+nano packages/example/build.sh
 ```
 
-## 5. Isi build.sh
-- Gunakan template build.sh yang ada di folder `template`
-- atau bisa menggunakan command `./termux-build template`
+## 5. Fill in build.sh
 
-- Wajib ada metadata:
- - TERMUX_PKG_HOMEPAGE=
- - TERMUX_PKG_DESCRIPTION=""
- - TERMUX_PKG_LICENSE=""
- - TERMUX_PKG_MAINTAINER=""
- - TERMUX_PKG_VERSION=
- - TERMUX_PKG_SRCURL=
- - TERMUX_PKG_SHA256=
+- Use the `build.sh` template located in the `template/` folder
+- Or generate it with the command `./termux-build template`
+- The following metadata fields are required:
 
-## 6. Validasi Package
-Jalankan pengecekan sebelum commit:
-```Bash
-./termux-build lint packages/<nama-package>
+```bash
+TERMUX_PKG_HOMEPAGE=
+TERMUX_PKG_DESCRIPTION=""
+TERMUX_PKG_LICENSE=""
+TERMUX_PKG_MAINTAINER=""
+TERMUX_PKG_VERSION=
+TERMUX_PKG_SRCURL=
+TERMUX_PKG_SHA256=
+```
+
+## 6. Validate the Package
+
+Run the following checks before committing:
+
+```bash
+./termux-build lint packages/<package-name>
 ./termux-build doctor
-./termux-build check-pr <nama-package>
-```
-Pastikan tidak ada error ❌.
-
-## 7. Commit Perubahan
-```Bash
-git add packages/<nama-package>
-git commit -m "New package: <nama-package>"
-```
-Contoh:
-```Text
-git add packages/contoh
-git commit -m "New package: contoh"
+./termux-build check-pr <package-name>
 ```
 
-## 8. Push ke Fork
-```Bash
-git push origin <nama-package>
+Make sure there are no errors ❌.
+
+## 7. Commit Your Changes
+
+```bash
+git add packages/<package-name>
+git commit -m "New package: <package-name>"
 ```
-Contoh:
-```Text
-git push origin contoh
+
+Example:
+
+```bash
+git add packages/example
+git commit -m "New package: example"
 ```
-nanti akan muncul link untuk proses Pull Request (PR)
 
-## 9. Buat Pull Request (PR)
-- Buka fork kamu di GitHub
-- Klik Compare & Pull Request
-- Jelaskan singkat:
- - Fungsi tool
- - Sumber upstream
- - Cara build/test (jika perlu)
+## 8. Push to Your Fork
 
-## 10. Tunggu Review
-- Reviewer mungkin meminta revisi
-- Jika diminta perubahan:
- - Edit file
- - Commit ulang
- - Push → PR otomatis ter-update
+```bash
+git push origin <package-name>
+```
 
-**Catatan Penting**
-- `termux-build` hanya untuk check & review,
-tidak mengubah file atau upload ke GitHub
-- Jangan upload binary hasil build
-- Pastikan source berasal dari upstream resmi
+Example:
+
+```bash
+git push origin example
+```
+
+A link to open a Pull Request will appear in the terminal output.
+
+## 9. Create a Pull Request (PR)
+
+- Open your fork on GitHub
+- Click **Compare & Pull Request**
+- Briefly describe:
+  - What the tool does
+  - The upstream source
+  - How to build/test it (if applicable)
+
+## 10. Wait for Review
+
+- A reviewer may request changes
+- If changes are requested:
+  - Edit the file(s)
+  - Commit again
+  - Push — the PR will update automatically
+
+---
+
+> **Important notes**
+> - `termux-build` is for checking and reviewing only — it does not modify files or upload anything to GitHub
+> - Do not upload compiled binaries from your local build
+> - Make sure the source comes from the official upstream repository
