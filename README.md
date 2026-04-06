@@ -73,8 +73,8 @@
 
 ### Option 1 (Recommended)
 ```bash
-pkg install python curl rust
-pip install textual rich termux-app-store
+pkg install python
+pip install termux-app-store
 ```
 
 ### Option 2 (Manual)
