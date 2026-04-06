@@ -7,7 +7,7 @@ the binary release and hides internal implementation details.
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 - Termux (latest version recommended)
 - Internet connection
@@ -20,32 +20,58 @@ the binary release and hides internal implementation details.
 
 ---
 
-## 🚀 Quick Install (Recommended)
+## Quick Install (Recommended)
 
-Run the following command inside Termux:
+> Option 1 (Recommended)
+
+Run the following command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/djunekz/termux-app-store/main/install.sh```
+pip install termux-app-store textual
+```
 
+> Option 2 (Manual)
+
+Run the following command:
+
+```bash
+git clone https://github.com/djunekz/termux-app-store
+cd termux-app-store
+bash install.sh
+```
+or with `tasctl` in directory termux-app-store
+```bash
+git clone https://github.com/djunekz/termux-app-store
+cd termux-app-store
+./tasctl install
+```
 ### After installation, run:
-`termux-app-store`
+- `termux-app-store` - Open TUI
+- `termux-app-store help` - Open CLI
+
 ---
 
-## 🔍 What the Installer Does
+## What the Installer Does
 The installer will:
 - Detect your CPU architecture automatically
 - Download the correct binary release
 - Install it into a hidden directory:
 ```
-$PREFIX/lib/.tas/```
+$HOME/.termux-app-store
+```
+or directory
+```
+$PREFIX/lib/.tas/
+```
 - Create a symlink:
 ```
-$PREFIX/bin/termux-app-store```
+$PREFIX/bin/termux-app-store
+```
 - Make the app runnable from anywhere
 You do not need to know where the internal files are located.
 ---
 
-## 📦 Binary Mode (Default)
+## Binary Mode (Default)
 By default, Termux App Store runs as a prebuilt binary:
 - Source code is not required at runtime
 - Python files are not exposed
@@ -54,7 +80,7 @@ By default, Termux App Store runs as a prebuilt binary:
 This is intentional.
 ---
 
-## 🧠 Python Fallback Mode (Advanced)
+## Python Fallback Mode (Advanced)
 If you are running from source (not recommended for normal users):
 ### Install dependencies manually
 ```
@@ -67,9 +93,10 @@ cd termux-app-store
 python termux-app-store.py
 ```
 This mode is intended for developers only.
+
 ---
 
-## 🗂 Packages Directory Requirement
+## Packages Directory Requirement
 Termux App Store requires a packages/ directory inside the project root.
 ### Structure example:
 ```Text
@@ -83,7 +110,9 @@ termux-app-store/
 ```
 The app will automatically locate this directory even if the project folder is moved or renamed.
 
-## ❗ Troubleshooting
+---
+
+## Troubleshooting
 ### command not found: termux-app-store
 Restart Termux or run:
 ```Bash
@@ -101,24 +130,45 @@ Make sure $PREFIX/bin is writable:
 ```Bash
 chmod +x $PREFIX/bin/termux-app-store
 ```
+
+### build-package.sh Not Found
+Update termux-app-store:
+```bash
+termux-app-store update
+```
+
 ---
 
-## 🔐 Security Notice
+## Security Notice
 - Always install from the official GitHub repository
 - Do not download binaries from third-party sources
 - Verify release checksums if provided
 See [SECURITY.md](SECURITY.md) for details.
 ---
 
-## 🧾 Uninstall
+## Uninstall
 To remove Termux App Store:
-```Bash
+
+> Option 1 (Auto) if you install termux-app-store with pip
+
+```bash
+pip uninstall termux-app-store
+```
+
+> Option 2 (Manual)
+
+Open termux-app-store directory and then run:
+```bash
+./tasctl uninstall
+```
+or manual remove:
+```bash
 rm -f $PREFIX/bin/termux-app-store
 rm -rf $PREFIX/lib/.tas
 ```
 ---
 
-## 📎 Support
-Issues: GitHub Issues
-Maintainer: [@djunekz](https://github.com/djunekz)
-Email Support: gab288.gab288@passinbox.com
+## Support
+- Issues: [GitHub Issues](https://github.com/djunekz/termux-app-store/issues)
+- Maintainer: [@djunekz](https://github.com/djunekz)
+- Email Support: gab288.gab288@passinbox.com
