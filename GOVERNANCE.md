@@ -6,7 +6,7 @@ maintenance, and a healthy open-source community.
 
 ---
 
-## 🎯 Project Scope
+## Project Scope
 
 **Termux App Store** is a community-driven infrastructure project
 focused on:
@@ -19,9 +19,9 @@ but a **foundation layer** for the Termux ecosystem.
 
 ---
 
-## 👥 Roles & Responsibilities
+## Roles & Responsibilities
 
-### 🧠 Project Lead
+### Project Lead
 - Defines project vision and direction
 - Has final decision authority when consensus cannot be reached
 - Oversees releases and major changes
@@ -31,7 +31,7 @@ but a **foundation layer** for the Termux ecosystem.
 
 ---
 
-### 🛠 Maintainers
+### Maintainers
 Maintainers are responsible for:
 - Reviewing pull requests
 - Enforcing project standards
@@ -42,7 +42,7 @@ Maintainers **do not act unilaterally** on breaking changes.
 
 ---
 
-### 🤝 Contributors
+### Contributors
 Contributors may:
 - Submit pull requests
 - Report issues
@@ -56,32 +56,32 @@ Contributors are expected to follow:
 
 ---
 
-## 🗳 Decision-Making Process
+## Decision-Making Process
 
-### ✅ Normal Changes
+### Normal Changes
 - Bug fixes
 - Package updates
 - Documentation changes
 - Non-breaking improvements
 
-➡️ Reviewed and merged by maintainers.
+Reviewed and merged by maintainers.
 
 ---
 
-### ⚠️ Significant Changes
+### Significant Changes
 - CI architecture changes
 - Tooling behavior changes
 - Policy updates
 - Structural refactors
 
-➡️ Require:
+Require:
 1. Issue or discussion
 2. Maintainer review
 3. Project Lead approval (if needed)
 
 ---
 
-### 🚨 Breaking Changes
+### Breaking Changes
 Breaking changes **must**:
 1. Be proposed via an issue
 2. Include a clear rationale
@@ -91,7 +91,7 @@ Final approval rests with the **Project Lead**.
 
 ---
 
-## 📦 Package Governance
+## Package Governance
 
 - Each package must follow Termux packaging standards
 - Automated validation is mandatory
@@ -102,7 +102,7 @@ Malicious or low-quality packages will be removed immediately.
 
 ---
 
-## 🔐 Security Governance
+## Security Governance
 
 - Security issues are handled privately
 - Public disclosure only after mitigation
@@ -112,7 +112,7 @@ Any contributor violating security trust will be removed.
 
 ---
 
-## 📢 Community Conduct
+## Community Conduct
 
 All participants must adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -125,7 +125,7 @@ Maintainers may take action including:
 
 ---
 
-## 🔄 Maintainer Changes
+## Maintainer Changes
 
 ### Adding Maintainers
 - Based on consistent, high-quality contributions
@@ -138,7 +138,7 @@ Maintainers may take action including:
 
 ---
 
-## 📜 Governance Changes
+## Governance Changes
 
 This governance model may evolve over time.
 
@@ -149,7 +149,7 @@ Changes to this document require:
 
 ---
 
-## 🌍 Community First
+## Community First
 
 This project prioritizes:
 - Transparency
@@ -162,7 +162,7 @@ but someone must be responsible for its direction.
 
 ---
 
-## 📌 Final Note
+## Final Note
 
 Governance exists to protect both:
 - The **project**
