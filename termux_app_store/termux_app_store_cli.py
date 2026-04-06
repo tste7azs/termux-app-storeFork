@@ -51,6 +51,19 @@ _SELF_FILES = {
 
 _INSTALL_DIR = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib" / ".tas"
 
+
+def _is_pip_mode() -> bool:
+    """Return True jika dijalankan dari instalasi pip (bukan install.sh)."""
+    try:
+        import importlib.util
+        spec = importlib.util.find_spec("termux_app_store")
+        if spec and spec.origin:
+            return "site-packages" in str(spec.origin)
+    except Exception:
+        pass
+    return False
+
+
 R       = "\033[0m"
 B       = "\033[1m"
 RED     = "\033[31m"
@@ -162,6 +175,26 @@ def resolve_app_root() -> Path:
     (pip_home / "packages").mkdir(exist_ok=True)
     save_cached_root(pip_home)
     return pip_home
+
+
+def ensure_build_package_sh(app_root: Path) -> bool:
+    build_pkg = app_root / "build-package.sh"
+    if build_pkg.exists():
+        return True
+    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/build-package.sh"
+    try:
+        print(f"{DIM}[*] Downloading build-package.sh...{R}")
+        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+            if raw:
+                build_pkg.write_bytes(raw)
+                build_pkg.chmod(0o755)
+                print(f"{GREEN}[✔] build-package.sh downloaded.{R}")
+                return True
+    except Exception as e:
+        print(f"{RED}[✗] Failed to download build-package.sh: {e}{R}")
+    return False
 
 
 def ensure_build_package_sh(app_root: Path) -> bool:
@@ -464,6 +497,10 @@ def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = Fa
         print(f"{RED}[✗] Cannot proceed without build-package.sh.{R}")
         return False
 
+    if not ensure_build_package_sh(app_root):
+        print(f"{RED}[✗] Cannot proceed without build-package.sh.{R}")
+        return False
+
     proc = subprocess.Popen(
         ["bash", "build-package.sh", name],
         cwd=str(app_root),
@@ -679,6 +716,23 @@ def _files_differ(local_path: "Path", remote_bytes: bytes) -> bool:
 def cmd_self_update(silent: bool = False) -> bool:
     import shutil as _shutil
 
+    if _is_pip_mode():
+        if not silent:
+            print(f"{DIM}[*] Pip mode detected — upgrading via pip...{R}")
+        ret = subprocess.call(
+            [sys.executable, "-m", "pip", "install", "--upgrade",
+             "termux-app-store", "--break-system-packages"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        if ret == 0:
+            if not silent:
+                print(f"{GREEN}[✔] termux-app-store upgraded via pip.{R}")
+            return True
+        else:
+            if not silent:
+                print(f"{RED}[✗] pip upgrade failed.{R}")
+            return False
+
     this_file   = Path(__file__).resolve()
     app_dir     = this_file.parent
 
@@ -792,8 +846,8 @@ def cmd_version():
     if remote_ver:
         print(f"  {B}Latest   :{R} {GREEN}{B}v{remote_ver}{R}")
         if local_ver and _ver_tuple(remote_ver) > _ver_tuple(local_ver):
-            print(f"\n  {YELLOW}{B}⬆  New version available: v{remote_ver}{R}")
-            print(f"  {DIM}Run: {CYAN}termux-app-store upgrade{R}{DIM} to update{R}")
+            print(f"\n  {YELLOW}{B}  New version available: v{remote_ver}{R}")
+            print(f"  {DIM}Run: {CYAN}termux-app-store update{R}")
         else:
             print(f"\n  {GREEN}{B}✔  This is the latest version{R}")
     else:
