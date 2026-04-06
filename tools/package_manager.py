@@ -9,7 +9,7 @@ import platform
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-APP_VERSION = "0.2.3"
+APP_VERSION = "0.2.4"
 
 GITHUB_REPO = os.getenv("TERMUX_APP_STORE_GITHUB_REPO", "djunekz/termux-app-store")
 GITHUB_API_LATEST = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
