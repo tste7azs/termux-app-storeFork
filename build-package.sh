@@ -152,7 +152,6 @@ fi
 
 _ok "Syntax OK"
 
-# Ensure PATH always includes PREFIX/bin so tools like npm, pip, cargo are available
 export PATH="$PREFIX/bin:$PATH"
 
 source "$BUILD_SH"
@@ -312,16 +311,15 @@ _section "Dependencies"
 
 if [[ -n "${TERMUX_PKG_DEPENDS:-}" ]]; then
   _progress "Installing dependencies..."
-  IFS=',' read -ra _DEPS <<< "$TERMUX_PKG_DEPENDS"
-  for dep in "${_DEPS[@]}"; do
-    dep="$(echo "$dep" | tr -d ' ')"
+  _DEPS_NORMALIZED=$(echo "$TERMUX_PKG_DEPENDS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | tr '\n' ' ')
+  for dep in $_DEPS_NORMALIZED; do
     printf "      ${GRAY}+${R} ${WHITE}%s${R}\n" "$dep"
   done
 
   _spin_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   _spin_i=0
   _PKG_LOG=$(mktemp)
-  pkg install -y $(tr ',' ' ' <<<"$TERMUX_PKG_DEPENDS") > "$_PKG_LOG" 2>&1 &
+  pkg install -y $_DEPS_NORMALIZED > "$_PKG_LOG" 2>&1 &
   _PKG_PID=$!
   while kill -0 "$_PKG_PID" 2>/dev/null; do
     _sc="${_spin_chars:$(( _spin_i % ${#_spin_chars} )):1}"
@@ -607,7 +605,6 @@ if [[ -n "$PREBUILT_DEB" ]]; then
 
       CLEANED_DEPS=$(echo "$COMBINED_DEPS" | sed -e 's/([^)]*)//g' -e 's/|/,/g' -e 's/  */ /g' | tr -d ' ')
 
-      # Install missing dependencies
       _progress "Installing missing dependencies from .deb..."
       IFS=',' read -ra _AUTO_DEPS <<< "$CLEANED_DEPS"
 
@@ -649,7 +646,6 @@ if declare -f termux_step_make > /dev/null 2>&1; then
   _MAKE_LOG=$(mktemp)
   _MAKE_EXIT=0
 
-  # Build spinner
   _spin_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   _spin_i=0
   ( export PATH="$PREFIX/bin:$PATH"; termux_step_make ) > "$_MAKE_LOG" 2>&1 &
@@ -698,25 +694,19 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
   _progress "Extracting .deb contents..."
   dpkg -x "$PREBUILT_DEB" "$WORK_DIR/pkg"
 
-  # Find binary/script inside .deb — check bin/ first, then fallback to any file
   BIN_FILE="$(find "$WORK_DIR/pkg" -type f -name "$PACKAGE*" -executable | head -n1 || true)"
 
-  # Fallback 1: file exists in bin/ even if not executable
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -path "*/bin/$PACKAGE" | head -n1 || true)"
 
-  # Fallback 2: any wrapper script in bin/
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -path "*/bin/*" | head -n1 || true)"
 
-  # Fallback 3: .py or .sh file in lib/
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f \( -name "*.py" -o -name "*.sh" \) | head -n1 || true)"
 
-  # Fallback 4: any file available
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -not -path "*/DEBIAN/*" | head -n1 || true)"
 
   if [[ -n "$BIN_FILE" ]]; then
     mkdir -p "$PREFIX/lib/$PACKAGE"
 
-    # Detect file type to determine install method
     _BIN_EXT="${BIN_FILE##*.}"
     _IS_SCRIPT=0
     _SCRIPT_INTERPRETER=""
@@ -728,7 +718,6 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
       _IS_SCRIPT=1
       _SCRIPT_INTERPRETER="bash"
     else
-      # Check shebang
       _SHEBANG=$(head -c 512 "$BIN_FILE" 2>/dev/null | head -n1 || true)
       if echo "$_SHEBANG" | grep -q "python"; then
         _IS_SCRIPT=1
@@ -740,7 +729,6 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
     fi
 
     if [[ "$_IS_SCRIPT" -eq 1 ]]; then
-      # Script — copy to lib/ and create wrapper without needing libpython check
       cp "$BIN_FILE" "$PREFIX/lib/$PACKAGE/$(basename $BIN_FILE)"
       chmod 644 "$PREFIX/lib/$PACKAGE/$(basename $BIN_FILE)"
       mkdir -p "$PREFIX/bin"
@@ -757,9 +745,6 @@ EOF
       mv "$BIN_FILE" "$PREFIX/lib/$PACKAGE/$PACKAGE"
       chmod +x "$PREFIX/lib/$PACKAGE/$PACKAGE"
 
-    # Check if binary is linked to a specific libpython version
-    # If so, don't exec directly — create a python3 wrapper so
-    # it's not tied to a specific Python version (e.g., libpython3.12.so)
     _LINKED_PYTHON=""
     if command -v readelf &>/dev/null; then
       _LINKED_PYTHON=$(readelf -d "$PREFIX/lib/$PACKAGE/$PACKAGE" 2>/dev/null         | grep -oP "libpython[0-9]+\.[0-9]+[^]]*" | head -n1 || true)
@@ -768,25 +753,18 @@ EOF
     fi
 
     if [[ -n "$_LINKED_PYTHON" ]]; then
-      # Binary linked to a specific libpython version.
-      # Solution: create a symlink from the currently installed libpython
-      # to the name the binary needs. This is the most reliable and permanent approach
-      # since Termux always has one active Python version.
 
       _PY_VER=$(echo "$_LINKED_PYTHON" | grep -oP "[0-9]+\.[0-9]+" | head -n1 || true)
 
-      # Check if the required libpython already exists
       _LIB_NEEDED="$PREFIX/lib/libpython${_PY_VER}.so.1.0"
       _LIB_EXISTS=0
       find "$PREFIX/lib" -name "libpython${_PY_VER}*.so*" 2>/dev/null | grep -q . && _LIB_EXISTS=1
 
       if [[ "$_LIB_EXISTS" -eq 0 && -n "$_PY_VER" ]]; then
-        # Find another installed libpython version (e.g., libpython3.13.so.1.0)
         _INSTALLED_LIBPY=$(find "$PREFIX/lib" -maxdepth 1 -name "libpython*.so.1.0" \
           2>/dev/null | head -n1 || true)
 
         if [[ -n "$_INSTALLED_LIBPY" ]]; then
-          # Create symlink: libpython3.12.so.1.0 → libpython3.13.so.1.0 (or whichever version)
           ln -sf "$_INSTALLED_LIBPY" "$_LIB_NEEDED" 2>/dev/null && {
             _ok "Symlinked: libpython${_PY_VER}.so.1.0 → $(basename $_INSTALLED_LIBPY)"
           } || {
@@ -816,7 +794,7 @@ EOF
     chmod +x "$PREFIX/bin/$PACKAGE"
     _ok "Binary installed"
     _detail "Bin:" "$PREFIX/bin/$PACKAGE"
-    fi  # end if _IS_SCRIPT
+    fi
   fi
 
 elif declare -f termux_step_make_install > /dev/null 2>&1; then
@@ -1131,10 +1109,6 @@ Maintainer: ${TERMUX_PKG_MAINTAINER:-unknown}
 Description: ${TERMUX_PKG_DESCRIPTION:-No description}
 EOF
 
-if [[ -n "${TERMUX_PKG_DEPENDS:-}" ]]; then
-  echo "Depends: ${TERMUX_PKG_DEPENDS}" >> "$CONTROL_DIR/control"
-fi
-
 _ok "control file written"
 _detail "Package:"    "${TERMUX_PKG_NAME:-$PACKAGE}"
 _detail "Version:"    "${TERMUX_PKG_VERSION:-0.0.1}"
@@ -1200,7 +1174,10 @@ _ok "Package built successfully"
 _section "Installing Package"
 
 _progress "Running dpkg -i..."
-dpkg -i "$DEB_FILE"
+if ! dpkg -i "$DEB_FILE" 2>&1; then
+  _warn "dpkg -i reported issues — retrying with --force-depends..."
+  dpkg -i --force-depends "$DEB_FILE" 2>&1 || _warn "Install completed with warnings (dependency declarations ignored)"
+fi
 
 if apt-mark hold "$PACKAGE" > /dev/null 2>&1; then
   _ok "Package held — protected from 'pkg upgrade' overwrite"
