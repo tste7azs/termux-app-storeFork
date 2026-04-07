@@ -8,6 +8,9 @@ and this project adheres to semantic versioning.
 
 ## [Unreleased]
 
+### Changed
+- Package `bashxt` v2.2 - Updated metadata
+
 ---
 
 ## [v0.2.4] - 2026-04-07
