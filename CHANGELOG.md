@@ -8,6 +8,10 @@ and this project adheres to semantic versioning.
 
 ## [Unreleased]
 
+### Added
+- New menu `termux-build init` for auto create and build package
+- New file termux-build-init.sh in directory tools for auto create and build package
+
 ### Changed
 - Package `bashxt` v2.2 - Updated metadata
 
