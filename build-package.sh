@@ -46,10 +46,10 @@ _banner() {
   echo ""
   _line_heavy
   printf "${BOLD}${BCYAN}"
-  printf "%*s" $(( (w + 26) / 2 )) "Termux App Store Builder"
+  printf "%*s" $(( (w + 6) / 2 )) "Termux App Store Builder"
   printf "${R}\n"
   printf "${GRAY}"
-  printf "%*s" $(( (w + 36) / 2 )) "github.com/djunekz/termux-app-store"
+  printf "%*s" $(( (w + 16) / 2 )) "github.com/djunekz/termux-app-store"
   printf "${R}\n"
   _line_heavy
   echo ""
