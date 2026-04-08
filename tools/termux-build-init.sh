@@ -271,6 +271,59 @@ scan_python_imports() {
     printf '%s\n' "${deps[@]}" | sort -u | xargs
 }
 
+scan_shell_deps() {
+    local src="$1"
+    local deps=()
+    local shfiles
+    mapfile -t shfiles < <(find "$src" -maxdepth 3 -name "*.sh" 2>/dev/null)
+    [[ ${#shfiles[@]} -eq 0 ]] && echo "" && return
+    local cmds
+    cmds=$(cat "${shfiles[@]}" 2>/dev/null \
+        | sed -n \
+            's/.*command -v  *\([a-zA-Z0-9_-]*\).*/\1/p;
+             s/.*which  *\([a-zA-Z0-9_-]*\).*/\1/p;
+             s/.*require  *\([a-zA-Z0-9_-]*\).*/\1/p' \
+        | grep -v '^$' | sort -u || true)
+    for cmd in $cmds; do
+        local mapped; mapped=$(map_shell_dep "$cmd")
+        [[ -n "$mapped" ]] && deps+=("$mapped")
+    done
+    [[ ${#deps[@]} -eq 0 ]] && echo "" && return
+    printf '%s\n' "${deps[@]}" | sort -u | xargs
+}
+
+map_shell_dep() {
+    local cmd="$1"
+    case "$cmd" in
+        bash|sh|echo|printf|read|exit|source|cd|ls|cp|mv|rm|mkdir|cat|\
+        grep|sed|awk|cut|tr|sort|uniq|head|tail|find|xargs|test|\
+        true|false|export|local|return) return ;;
+    esac
+    case "$cmd" in
+        python3|python)  echo "pkg:python" ;;
+        php)             echo "pkg:php" ;;
+        ruby)            echo "pkg:ruby" ;;
+        perl)            echo "pkg:perl" ;;
+        node|nodejs)     echo "pkg:nodejs" ;;
+        git)             echo "pkg:git" ;;
+        curl)            echo "pkg:curl" ;;
+        wget)            echo "pkg:wget" ;;
+        nmap)            echo "pkg:nmap" ;;
+        ssh|sshd)        echo "pkg:openssh" ;;
+        zip)             echo "pkg:zip" ;;
+        unzip)           echo "pkg:unzip" ;;
+        openssl)         echo "pkg:openssl" ;;
+        ffmpeg)          echo "pkg:ffmpeg" ;;
+        convert|magick)  echo "pkg:imagemagick" ;;
+        jq)              echo "pkg:jq" ;;
+        dialog)          echo "pkg:dialog" ;;
+        figlet|toilet)   echo "pkg:figlet" ;;
+        whiptail)        echo "pkg:newt" ;;
+        zenity)          echo "warn:zenity-requires-X11-not-available-in-Termux" ;;
+        *)               echo "" ;;
+    esac
+}
+
 detect_method() {
     local src="$1"
     if   [[ -f "$src/Cargo.toml" ]];     then echo "cargo"
@@ -637,6 +690,9 @@ step "Dependency scan"
 DEPS_DECLARED=""
 DEPS_IMPORTS=""
 
+DEPS_SHELL_WARNS=""
+DEPS_SHELL_PKGS=""
+
 if [[ "$INSTALL_METHOD" == "pip" || "$INSTALL_METHOD" == "python-script" ]]; then
     DEPS_DECLARED=$(scan_python_declared_deps "$SRC" || true)
     DEPS_IMPORTS=$(scan_python_imports "$SRC" || true)
@@ -644,9 +700,19 @@ if [[ "$INSTALL_METHOD" == "pip" || "$INSTALL_METHOD" == "python-script" ]]; the
     info "Import deps   : ${DEPS_IMPORTS:-none}"
 fi
 
+DEPS_SHELL_RAW=$(scan_shell_deps "$SRC" || true)
+if [[ -n "$DEPS_SHELL_RAW" ]]; then
+    DEPS_SHELL_WARNS=$(printf '%s
+' $DEPS_SHELL_RAW | grep '^warn:' | sed 's/^warn://' | xargs || true)
+    DEPS_SHELL_PKGS=$(printf '%s
+' $DEPS_SHELL_RAW | grep '^pkg:' | xargs || true)
+    [[ -n "$DEPS_SHELL_WARNS" ]] && warn "Incompatible  : ${R}${DEPS_SHELL_WARNS}${N}"
+    [[ -n "$DEPS_SHELL_PKGS"  ]] && info "Shell deps    : ${DEPS_SHELL_PKGS}"
+fi
+
 case "$INSTALL_METHOD" in
     pip|python-script)
-        ALL_DEPS="$DEPS_DECLARED $DEPS_IMPORTS"
+        ALL_DEPS="$DEPS_DECLARED $DEPS_IMPORTS ${DEPS_SHELL_PKGS:-}"
         PKG_ONLY_DEPS=$(pkg_deps "pkg:python pkg:python-pip pkg:python-setuptools $ALL_DEPS")
         PIP_ONLY_DEPS=$(pip_deps "$ALL_DEPS") ;;
     cargo)      ALL_DEPS="rust" ;;
@@ -657,7 +723,7 @@ case "$INSTALL_METHOD" in
     perl)       ALL_DEPS="perl" ;;
     lua)        ALL_DEPS="lua54" ;;
     php)        ALL_DEPS="php" ;;
-    shell|make|autotools|unknown) ALL_DEPS="" ;;
+    shell|make|autotools|unknown) ALL_DEPS="${DEPS_SHELL_PKGS:-}" ;;
     *)          ALL_DEPS="" ;;
 esac
 
@@ -698,6 +764,7 @@ printf "${W}${N}  %-12s : %-28s ${W}${N}\n" "License"    "$LICENSE"
 printf "${W}${N}  %-12s : %-28s ${W}${N}\n" "Entrypoint" "$MAIN_FILE"
 echo -e "${W}════════════════════════════════════════════${N}"
 echo -e "${W}${N}  Depends: ${C}${DEPENDS_JOINED:-none}${N}"
+[[ -n "${DEPS_SHELL_WARNS:-}" ]] && echo -e "${R}  ⚠ Incompatible: ${DEPS_SHELL_WARNS}${N}"
 echo -e "${W}════════════════════════════════════════════${N}"
 echo ""
 
