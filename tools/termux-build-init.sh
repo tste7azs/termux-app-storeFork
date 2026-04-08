@@ -4,7 +4,7 @@
 #   Auto create & build GitHub repo as a Termux .deb package
 #   github.com/djunekz/termux-app-store
 # =============================================================================
-set -euo pipefail
+set -uo pipefail
 
 _SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [[ "$(basename "$_SELF_DIR")" == "tools" ]]; then
@@ -244,7 +244,7 @@ scan_python_declared_deps() {
         done
     fi
 
-    [[ ${#deps[@]} -eq 0 ]] && return
+    [[ ${#deps[@]} -eq 0 ]] && echo "" && return
     printf '%s\n' "${deps[@]}" | sort -u | xargs
 }
 
@@ -254,20 +254,20 @@ scan_python_imports() {
 
     local pyfiles
     mapfile -t pyfiles < <(find "$src" -maxdepth 3 -name "*.py" 2>/dev/null)
-    [[ ${#pyfiles[@]} -eq 0 ]] && return
+    [[ ${#pyfiles[@]} -eq 0 ]] && echo "" && return
 
     local imports
     imports=$(cat "${pyfiles[@]}" 2>/dev/null \
         | sed -n 's/^import  *\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p;
                    s/^from  *\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p' \
-        | sort -u) || true
+        | sort -u || true)
 
     for mod in $imports; do
         local mapped; mapped=$(map_python_dep "$mod")
         [[ -n "$mapped" ]] && deps+=("$mapped")
     done
 
-    [[ ${#deps[@]} -eq 0 ]] && return
+    [[ ${#deps[@]} -eq 0 ]] && echo "" && return
     printf '%s\n' "${deps[@]}" | sort -u | xargs
 }
 
@@ -319,9 +319,17 @@ map_shell_dep() {
         dialog)          echo "pkg:dialog" ;;
         figlet|toilet)   echo "pkg:figlet" ;;
         whiptail)        echo "pkg:newt" ;;
-        zenity)          echo "warn:zenity-requires-X11-not-available-in-Termux" ;;
+        zenity|xterm|xdotool|xdpyinfo) echo "warn:$cmd-requires-X11-not-available-on-Termux" ;;
         *)               echo "" ;;
     esac
+}
+
+detect_installer() {
+    local src="$1"
+    for candidate in install_Termux.sh install_termux.sh Install_Termux.sh setup_termux.sh install.sh Install.sh setup.sh Setup.sh; do
+        [[ -f "$src/$candidate" ]] && echo "$candidate" && return
+    done
+    echo ""
 }
 
 detect_method() {
@@ -352,15 +360,15 @@ detect_entrypoint() {
     local pkg="$2"
 
     local f
-    f=$(grep -rl '__main__' "$src"/*.py 2>/dev/null | head -n1) \
-        && { basename "$f"; return; }
-    [[ -f "$src/$pkg.py" ]]      && { echo "$pkg.py"; return; }
-    f=$(ls "$src"/*.py 2>/dev/null | grep -vi 'setup\|conf\|config\|test' | head -n1) \
-        && { basename "$f"; return; }
+    f=$(grep -rl '__main__' "$src"/*.py 2>/dev/null | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+    [[ -f "$src/$pkg.py" ]] && { echo "$pkg.py"; return; }
+    f=$(ls "$src"/*.py 2>/dev/null | grep -vi 'setup\|conf\|config\|test' | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
 
-    [[ -f "$src/$pkg.sh" ]]      && { echo "$pkg.sh"; return; }
-    f=$(ls "$src"/*.sh 2>/dev/null | grep -vi 'setup\|install\|config\|test' | head -n1) \
-        && { basename "$f"; return; }
+    [[ -f "$src/$pkg.sh" ]] && { echo "$pkg.sh"; return; }
+    f=$(ls "$src"/*.sh 2>/dev/null | grep -vi 'setup\|install\|config\|test' | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
 
     ls "$src" | head -n1
 }
@@ -371,10 +379,21 @@ make_install_block() {
     local main="$3"
     local deps_joined="$4"
     local pip_extra="${5:-}"
+    local installer="${6:-}"
 
     local pip_extra_cmd=""
     if [[ -n "$pip_extra" ]]; then
         pip_extra_cmd="    pip install --quiet $pip_extra --break-system-packages 2>/dev/null || true"
+    fi
+
+    local installer_cmd=""
+    if [[ -n "$installer" ]]; then
+        installer_cmd='
+    if [[ -f "$libdir/'"$installer"'" ]]; then
+        echo "[ INFO ] Running '"$installer"'..."
+        (cd "$libdir" && bash '"$installer"' 2>/dev/null || true)
+        echo "[ INFO ] Installer selesai"
+    fi'
     fi
 
     case "$method" in
@@ -387,12 +406,21 @@ TERMUX_PKG_BUILD_IN_SRC=true
 termux_step_make_install() {
     pip install --quiet setuptools wheel --break-system-packages 2>/dev/null || true
 ${pip_extra_cmd}
+    local libdir="\$TERMUX_PREFIX/lib/${pkg}"
     pip install . --prefix="\$TERMUX_PREFIX" --no-deps --break-system-packages 2>/dev/null \\
         || pip install . --prefix="\$TERMUX_PREFIX" --no-deps --no-build-isolation --break-system-packages || {
             echo "pip failed — falling back to manual install"
-            mkdir -p "\$TERMUX_PREFIX/lib/${pkg}"
-            cp -r . "\$TERMUX_PREFIX/lib/${pkg}/"
+            mkdir -p "\$libdir"
+            cp -r . "\$libdir/"
         }
+
+    find "\$libdir" -type d 2>/dev/null | while read -r _dir; do
+        if ls "\$_dir"/*.py &>/dev/null 2>&1 && [[ ! -f "\$_dir/__init__.py" ]]; then
+            touch "\$_dir/__init__.py"
+        fi
+    done
+
+${installer_cmd}
 }
 BLOCK
     ;;
@@ -409,6 +437,14 @@ ${pip_extra_cmd}
     local libdir="\$TERMUX_PREFIX/lib/${pkg}"
     mkdir -p "\$libdir"
     cp -r . "\$libdir/"
+
+    find "\$libdir" -type d | while read -r _dir; do
+        if ls "\$_dir"/*.py &>/dev/null 2>&1 && [[ ! -f "\$_dir/__init__.py" ]]; then
+            touch "\$_dir/__init__.py"
+        fi
+    done
+
+${installer_cmd}
 
     cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
 #!/usr/bin/env bash
@@ -685,6 +721,13 @@ ok "Build method : ${W}${INSTALL_METHOD}${N}"
 MAIN_FILE=$(detect_entrypoint "$SRC" "$PKG_NAME")
 ok "Entrypoint   : ${W}${MAIN_FILE}${N}"
 
+INSTALLER_SCRIPT=$(detect_installer "$SRC")
+if [[ -n "$INSTALLER_SCRIPT" ]]; then
+    ok "Installer    : ${W}${INSTALLER_SCRIPT}${N} ${C}(will run post-copy)${N}"
+else
+    info "Installer    : none detected"
+fi
+
 step "Dependency scan"
 
 DEPS_DECLARED=""
@@ -762,9 +805,10 @@ printf "${W}${N}  %-12s : %-28s ${W}${N}\n" "Method"     "$INSTALL_METHOD"
 printf "${W}${N}  %-12s : %-28s ${W}${N}\n" "Version"    "$VERSION"
 printf "${W}${N}  %-12s : %-28s ${W}${N}\n" "License"    "$LICENSE"
 printf "${W}${N}  %-12s : %-28s ${W}${N}\n" "Entrypoint" "$MAIN_FILE"
+printf "${W}${N}  %-12s : %-28s ${W}${N}\n" "Installer"  "${INSTALLER_SCRIPT:-none}"
 echo -e "${W}════════════════════════════════════════════${N}"
 echo -e "${W}${N}  Depends: ${C}${DEPENDS_JOINED:-none}${N}"
-[[ -n "${DEPS_SHELL_WARNS:-}" ]] && echo -e "${R}  ⚠ Incompatible: ${DEPS_SHELL_WARNS}${N}"
+[[ -n "${DEPS_SHELL_WARNS:-}" ]] && echo -e "${R}  Incompatible: ${DEPS_SHELL_WARNS}${N}"
 echo -e "${W}════════════════════════════════════════════${N}"
 echo ""
 
@@ -773,7 +817,7 @@ read -rp "  Continue? [Y/n]: " _CONT
 
 step "Writing build.sh"
 
-INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED" "${PIP_ONLY_DEPS:-}")
+INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED" "${PIP_ONLY_DEPS:-}" "${INSTALLER_SCRIPT:-}")
 
 {
     printf 'TERMUX_PKG_HOMEPAGE=%s\n'          "$HOMEPAGE"
