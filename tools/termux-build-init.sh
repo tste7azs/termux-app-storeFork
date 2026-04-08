@@ -26,10 +26,10 @@ step()  { echo -e "\n${B}:: $*${N}\n${B}$(printf '%.0s-' {1..79})${N}"; }
 banner() {
 cat <<'EOF'
 
-═════════════════════════════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════════════════════
         Termux Build Init  -  Auto Create and Build package
               github.com/djunekz/termux-app-store
-═════════════════════════════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════════════════════
 EOF
 }
 
@@ -52,6 +52,14 @@ sanitize_pkgname() {
 join_deps() {
     echo "$*" | tr ',' ' ' | tr ' ' '\n' | grep -v '^$' | sort -u \
         | awk 'BEGIN{first=1} {if(first){printf "%s",$0;first=0} else {printf ", %s",$0}} END{print ""}'
+}
+
+pkg_deps() {
+    echo "$*" | tr ' ' '\n' | grep '^pkg:' | sed 's/^pkg://' | sort -u | xargs
+}
+
+pip_deps() {
+    echo "$*" | tr ' ' '\n' | grep '^pip:' | sed 's/^pip://' | sort -u | xargs
 }
 
 map_python_dep() {
@@ -80,66 +88,120 @@ map_python_dep() {
     esac
 
     case "$mod" in
-        pyfiglet)       echo "python-pyfiglet" ;;
-        tqdm)           echo "python-tqdm" ;;
-        requests)       echo "python-requests" ;;
-        bs4|beautifulsoup4) echo "python-beautifulsoup4" ;;
-        lxml)           echo "python-lxml" ;;
-        PIL|Pillow)     echo "python-pillow" ;;
-        numpy)          echo "python-numpy" ;;
-        pandas)         echo "python-pandas" ;;
-        scipy)          echo "python-scipy" ;;
-        matplotlib)     echo "python-matplotlib" ;;
-        flask)          echo "python-flask" ;;
-        flask_restful)  echo "python-flask-restful" ;;
-        django)         echo "python-django" ;;
-        fastapi)        echo "python-fastapi" ;;
-        uvicorn)        echo "python-uvicorn" ;;
-        sqlalchemy)     echo "python-sqlalchemy" ;;
-        click)          echo "python-click" ;;
-        rich)           echo "python-rich" ;;
-        typer)          echo "python-typer" ;;
-        colorama)       echo "python-colorama" ;;
-        termcolor)      echo "python-termcolor" ;;
-        yaml|ruamel)    echo "python-yaml" ;;
-        toml|tomllib)   echo "python-toml" ;;
-        dotenv)         echo "python-dotenv" ;;
-        cryptography)   echo "python-cryptography" ;;
-        paramiko)       echo "python-paramiko" ;;
-        scapy)          echo "python-scapy" ;;
-        netaddr)        echo "python-netaddr" ;;
-        netifaces)      echo "python-netifaces" ;;
-        psutil)         echo "python-psutil" ;;
-        pyperclip)      echo "python-pyperclip" ;;
-        pexpect)        echo "python-pexpect" ;;
-        ptyprocess)     echo "python-ptyprocess" ;;
-        six)            echo "python-six" ;;
-        attr|attrs)     echo "python-attrs" ;;
-        certifi)        echo "python-certifi" ;;
-        charset_normalizer|chardet) echo "python-chardet" ;;
-        idna)           echo "python-idna" ;;
-        urllib3)        echo "python-urllib3" ;;
-        aiohttp)        echo "python-aiohttp" ;;
-        httpx)          echo "python-httpx" ;;
-        websockets)     echo "python-websockets" ;;
-        pyzmq|zmq)      echo "python-pyzmq" ;;
-        pynput)         echo "python-pynput" ;;
-        keyboard)       echo "python-keyboard" ;;
-        loguru)         echo "python-loguru" ;;
-        tabulate)       echo "python-tabulate" ;;
-        prettytable)    echo "python-prettytable" ;;
-        termtables)     echo "python-termtables" ;;
-        fire)           echo "python-fire" ;;
-        docopt)         echo "python-docopt" ;;
-        cachetools)     echo "python-cachetools" ;;
-        pytz)           echo "python-pytz" ;;
-        dateutil)       echo "python-dateutil" ;;
-        tzdata)         echo "python-tzdata" ;;
-        jwt)            echo "python-jwt" ;;
-        bcrypt)         echo "python-bcrypt" ;;
-        nacl)           echo "python-pynacl" ;;
-        gi)             echo "glib" ;;
-        *)              echo "python-$mod" ;;
+        python)         echo "pkg:python" ;;
+        rust)           echo "pkg:rust" ;;
+        nodejs)         echo "pkg:nodejs" ;;
+        nmap)           echo "pkg:nmap" ;;
+        openssh)        echo "pkg:openssh" ;;
+        gi)             echo "pkg:glib" ;;
+        gzip)           echo "pkg:gzip" ;;
+        zip)            echo "pkg:zip" ;;
+        unzip)          echo "pkg:unzip" ;;
+        git)            echo "pkg:git" ;;
+        bzip2)          echo "pkg:bzip2" ;;
+        xz)             echo "pkg:xz" ;;
+        clang)          echo "pkg:clang" ;;
+        cmake)          echo "pkg:cmake" ;;
+        libtool)        echo "pkg:libtool" ;;
+        ninja)          echo "pkg:ninja" ;;
+        automake)       echo "pkg:automake" ;;
+        autoconf)       echo "pkg:autoconf" ;;
+        python-setuptools) echo "pkg:python-setuptools" ;;
+        python-wheel)   echo "pkg:python-wheel" ;;
+        python-pip)     echo "pkg:python-pip" ;;
+        openssl)        echo "pkg:openssl" ;;
+        openssl-dev)    echo "pkg:openssl-dev" ;;
+        libffi)         echo "pkg:libffi" ;;
+        zlib)           echo "pkg:zlib" ;;
+        libffi-dev)     echo "pkg:libffi-dev" ;;
+        zlib-dev)       echo "pkg:zlib-dev" ;;
+        libxml2)        echo "pkg:libxml2" ;;
+        libxml2-dev)    echo "pkg:libxml2-dev" ;;
+        libjpeg-turbo)  echo "pkg:libjpeg-turbo" ;;
+        libpng)         echo "pkg:libpng" ;;
+        freetype)       echo "pkg:freetype" ;;
+        sqlite)         echo "pkg:sqlite" ;;
+        sqlite-dev)     echo "pkg:sqlite-dev" ;;
+        libcurl)        echo "pkg:libcurl" ;;
+        npm)            echo "pkg:npm" ;;
+        perl)           echo "pkg:perl" ;;
+        ruby)           echo "pkg:ruby" ;;
+        gh)             echo "pkg:gh" ;;
+        vim)            echo "pkg:vim" ;;
+        tree)           echo "pkg:tree" ;;
+        neovim)         echo "pkg:neovim" ;;
+        hydra)          echo "pkg:hydra" ;;
+        php)            echo "pkg:php" ;;
+        libssh)         echo "pkg:libssh" ;;
+        libssh2)        echo "pkg:libssh2" ;;
+        mariadb)        echo "pkg:mariadb" ;;
+        redis)          echo "pkg:redis" ;;
+        imagemagick)    echo "pkg:imagemagick" ;;
+        ffmpeg)         echo "pkg:ffmpeg" ;;
+        termux-tools)   echo "pkg:termux-tools" ;;
+
+        requests)       echo "pip:requests" ;;
+        bs4|beautifulsoup4) echo "pip:beautifulsoup4" ;;
+        lxml)           echo "pip:lxml" ;;
+        PIL|Pillow)     echo "pip:pillow" ;;
+        numpy)          echo "pip:numpy" ;;
+        pandas)         echo "pip:pandas" ;;
+        scipy)          echo "pip:scipy" ;;
+        matplotlib)     echo "pip:matplotlib" ;;
+        cryptography)   echo "pip:cryptography" ;;
+        paramiko)       echo "pip:paramiko" ;;
+        scapy)          echo "pip:scapy" ;;
+        psutil)         echo "pip:psutil" ;;
+        pexpect)        echo "pip:pexpect" ;;
+        ptyprocess)     echo "pip:ptyprocess" ;;
+        yaml|ruamel)    echo "pip:yaml" ;;
+        six)            echo "pip:six" ;;
+        attr|attrs)     echo "pip:attrs" ;;
+        certifi)        echo "pip:certifi" ;;
+        charset_normalizer|chardet) echo "pip:chardet" ;;
+        idna)           echo "pip:idna" ;;
+        urllib3)        echo "pip:urllib3" ;;
+        aiohttp)        echo "pip:aiohttp" ;;
+        pyzmq|zmq)      echo "pip:pyzmq" ;;
+        click)          echo "pip:click" ;;
+        rich)           echo "pip:rich" ;;
+        colorama)       echo "pip:colorama" ;;
+        tzdata)         echo "pip:tzdata" ;;
+        bcrypt)         echo "pip:bcrypt" ;;
+        flask)          echo "pip:flask" ;;
+        sqlalchemy)     echo "pip:sqlalchemy" ;;
+        toml|tomllib)   echo "pip:toml" ;;
+        dotenv)         echo "pip:dotenv" ;;
+        pyfiglet)       echo "pip:pyfiglet" ;;
+        tqdm)           echo "pip:tqdm" ;;
+        termcolor)      echo "pip:termcolor" ;;
+        humanfriendly)  echo "pip:humanfriendly" ;;
+        wget)           echo "pip:wget" ;;
+        prettytable)    echo "pip:prettytable" ;;
+        tabulate)       echo "pip:tabulate" ;;
+        termtables)     echo "pip:termtables" ;;
+        fire)           echo "pip:fire" ;;
+        docopt)         echo "pip:docopt" ;;
+        cachetools)     echo "pip:cachetools" ;;
+        pytz)           echo "pip:pytz" ;;
+        dateutil)       echo "pip:python-dateutil" ;;
+        jwt)            echo "pip:PyJWT" ;;
+        nacl)           echo "pip:pynacl" ;;
+        httpx)          echo "pip:httpx" ;;
+        websockets)     echo "pip:websockets" ;;
+        pynput)         echo "pip:pynput" ;;
+        keyboard)       echo "pip:keyboard" ;;
+        loguru)         echo "pip:loguru" ;;
+        typer)          echo "pip:typer" ;;
+        uvicorn)        echo "pip:uvicorn" ;;
+        fastapi)        echo "pip:fastapi" ;;
+        django)         echo "pip:django" ;;
+        flask_restful)  echo "pip:flask-restful" ;;
+        pyperclip)      echo "pip:pyperclip" ;;
+        netifaces)      echo "pip:netifaces" ;;
+        netaddr)        echo "pip:netaddr" ;;
+
+        *)              echo "pip:$mod" ;;
     esac
 }
 
@@ -158,9 +220,11 @@ scan_python_declared_deps() {
 
     if [[ -f "$src/setup.py" ]]; then
         local reqs
-        reqs=$(grep -oP "(?<=install_requires\s*=\s*\[)[^\]]*" "$src/setup.py" 2>/dev/null || true)
+        reqs=$(sed -n '/install_requires/,/\]/p' "$src/setup.py" 2>/dev/null \
+            | grep -o '"[^"]*"\|'\''[^'\'']*'\''' \
+            | tr -d '"'\''  ' \
+            | sed 's/[>=<!~^].*//' || true)
         while IFS= read -r line; do
-            line=$(echo "$line" | tr -d "'\" ," | sed 's/[>=<!~^].*//')
             [[ -z "$line" ]] && continue
             local mapped; mapped=$(map_python_dep "$line")
             [[ -n "$mapped" ]] && deps+=("$mapped")
@@ -169,8 +233,12 @@ scan_python_declared_deps() {
 
     if [[ -f "$src/pyproject.toml" ]]; then
         local reqs
-        reqs=$(grep -oP '^\s*"?\K[a-zA-Z0-9_-]+(?=[>=<!\s";\[])' "$src/pyproject.toml" 2>/dev/null || true)
+        reqs=$(sed -n '/dependencies/,/\]/p' "$src/pyproject.toml" 2>/dev/null \
+            | grep -o '"[^"]*"' \
+            | tr -d '"' \
+            | sed 's/[>=<!~^;\[].*//' || true)
         for mod in $reqs; do
+            [[ -z "$mod" ]] && continue
             local mapped; mapped=$(map_python_dep "$mod")
             [[ -n "$mapped" ]] && deps+=("$mapped")
         done
@@ -189,8 +257,10 @@ scan_python_imports() {
     [[ ${#pyfiles[@]} -eq 0 ]] && return
 
     local imports
-    imports=$(grep -hoP '^import\s+\K[a-zA-Z_][a-zA-Z0-9_]*|^from\s+\K[a-zA-Z_][a-zA-Z0-9_]*' \
-        "${pyfiles[@]}" 2>/dev/null | sort -u || true)
+    imports=$(cat "${pyfiles[@]}" 2>/dev/null \
+        | sed -n 's/^import  *\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p;
+                   s/^from  *\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p' \
+        | sort -u) || true
 
     for mod in $imports; do
         local mapped; mapped=$(map_python_dep "$mod")
@@ -247,6 +317,12 @@ make_install_block() {
     local pkg="$2"
     local main="$3"
     local deps_joined="$4"
+    local pip_extra="${5:-}"
+
+    local pip_extra_cmd=""
+    if [[ -n "$pip_extra" ]]; then
+        pip_extra_cmd="    pip install --quiet $pip_extra --break-system-packages 2>/dev/null || true"
+    fi
 
     case "$method" in
 
@@ -257,6 +333,7 @@ TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_make_install() {
     pip install --quiet setuptools wheel --break-system-packages 2>/dev/null || true
+${pip_extra_cmd}
     pip install . --prefix="\$TERMUX_PREFIX" --no-deps --break-system-packages 2>/dev/null \\
         || pip install . --prefix="\$TERMUX_PREFIX" --no-deps --no-build-isolation --break-system-packages || {
             echo "pip failed — falling back to manual install"
@@ -274,6 +351,7 @@ TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_make_install() {
     pip install --quiet setuptools wheel --break-system-packages 2>/dev/null || true
+${pip_extra_cmd}
 
     local libdir="\$TERMUX_PREFIX/lib/${pkg}"
     mkdir -p "\$libdir"
@@ -281,6 +359,7 @@ termux_step_make_install() {
 
     cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
 #!/usr/bin/env bash
+cd "\${TERMUX_PREFIX}/lib/${pkg}" || exit 1
 exec python3 "\${TERMUX_PREFIX}/lib/${pkg}/${main}" "\$@"
 WRAPPER
     sed -i "s|\\\${TERMUX_PREFIX}|/data/data/com.termux/files/usr|g" "\$TERMUX_PREFIX/bin/${pkg}"
@@ -429,15 +508,20 @@ github_api() {
     result=$(curl -sf \
         -H "Accept: application/vnd.github+json" \
         ${GITHUB_TOKEN:+-H "Authorization: Bearer $GITHUB_TOKEN"} \
-        "$url" 2>/dev/null || true)
+        "$url" 2>/dev/null) || true
 
-    # detect rate-limit
-    if echo "$result" | grep -q '"rate limit"'; then
-        warn "GitHub API rate limited — set GITHUB_TOKEN env var for higher limits"
-        echo ""
-    else
-        echo "$result"
-    fi
+    case "$result" in
+        *rate\ limit*|*API\ rate\ limit*)
+            warn "GitHub API rate limited — set GITHUB_TOKEN env var for higher limits"
+            echo "" ;;
+        *)
+            echo "$result" ;;
+    esac
+}
+
+json_field() {
+    local json="$1" field="$2"
+    echo "$json" | sed -n "s/.*\"${field}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n1
 }
 
 banner
@@ -477,23 +561,37 @@ if [[ "$REPO_URL" == *"github.com"* ]]; then
     DATA=$(github_api "$API_BASE")
 
     if [[ -n "$DATA" ]]; then
-        DESCRIPTION=$(echo "$DATA" | grep -oP '"description":\s*"\K[^"]+' | head -n1 || echo "$DESCRIPTION")
-        LICENSE=$(echo     "$DATA" | grep -oP '"spdx_id":\s*"\K[^"]+' | head -n1 || echo "$LICENSE")
-        LANGUAGE=$(echo    "$DATA" | grep -oP '"language":\s*"\K[^"]+' | head -n1 || echo "Unknown")
-        HOMEPAGE=$(echo    "$DATA" | grep -oP '"homepage":\s*"\K[^"]+' | head -n1 || echo "$REPO_URL")
+        DESCRIPTION=$(json_field "$DATA" "description")
+        [[ -z "$DESCRIPTION" || "$DESCRIPTION" == "null" ]] && DESCRIPTION="$PKG_NAME — auto-packaged by termux-build-init"
+        LICENSE=$(json_field "$DATA" "spdx_id"); LICENSE="${LICENSE:-UNKNOWN}"
+        LANGUAGE=$(json_field "$DATA" "language"); LANGUAGE="${LANGUAGE:-Unknown}"
+        HOMEPAGE=$(json_field "$DATA" "homepage"); HOMEPAGE="${HOMEPAGE:-$REPO_URL}"
         [[ -z "$HOMEPAGE" || "$HOMEPAGE" == "null" ]] && HOMEPAGE="$REPO_URL"
         ok "Repo: ${W}${DESCRIPTION}${N}"
     fi
 
     RELEASE=$(github_api "$API_BASE/releases/latest")
-    TAG=$(echo "$RELEASE" | grep -oP '"tag_name":\s*"\K[^"]+' | head -n1 || true)
+    TAG=$(json_field "$RELEASE" "tag_name") || true
 
     if [[ -n "$TAG" ]]; then
         VERSION="${TAG#v}"
         SRCURL="$REPO_URL/archive/refs/tags/$TAG.tar.gz"
         ok "Source: release ${W}${TAG}${N}"
     else
-        DEFAULT_BRANCH=$(echo "$DATA" | grep -oP '"default_branch":\s*"\K[^"]+' | head -n1 || echo "main")
+        DEFAULT_BRANCH=$(json_field "$DATA" "default_branch")
+
+        if [[ -z "$DEFAULT_BRANCH" || "$DEFAULT_BRANCH" == "null" ]]; then
+            warn "Could not detect default branch from API — probing common branch names..."
+            for _branch in master main trunk dev; do
+                _probe_url="$REPO_URL/archive/refs/heads/$_branch.tar.gz"
+                if curl -sf --head "$_probe_url" -o /dev/null 2>/dev/null; then
+                    DEFAULT_BRANCH="$_branch"
+                    break
+                fi
+            done
+            [[ -z "$DEFAULT_BRANCH" ]] && DEFAULT_BRANCH="main"
+        fi
+
         VERSION="1.0.0"
         SRCURL="$REPO_URL/archive/refs/heads/$DEFAULT_BRANCH.tar.gz"
         warn "No release found — using branch ${W}${DEFAULT_BRANCH}${N}"
@@ -502,6 +600,10 @@ fi
 
 step "Downloading & analyzing source"
 info "URL: $SRCURL"
+
+if ! curl -sf --head "$SRCURL" -o /dev/null 2>/dev/null; then
+    fail "Source URL is not accessible: $SRCURL"$'\n'"       Cek nama branch atau pastikan repo tidak private."
+fi
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -544,7 +646,9 @@ fi
 
 case "$INSTALL_METHOD" in
     pip|python-script)
-        ALL_DEPS="python python-pip python-setuptools $DEPS_DECLARED $DEPS_IMPORTS" ;;
+        ALL_DEPS="$DEPS_DECLARED $DEPS_IMPORTS"
+        PKG_ONLY_DEPS=$(pkg_deps "pkg:python pkg:python-pip pkg:python-setuptools $ALL_DEPS")
+        PIP_ONLY_DEPS=$(pip_deps "$ALL_DEPS") ;;
     cargo)      ALL_DEPS="rust" ;;
     go)         ALL_DEPS="golang" ;;
     npm)        ALL_DEPS="nodejs" ;;
@@ -557,12 +661,18 @@ case "$INSTALL_METHOD" in
     *)          ALL_DEPS="" ;;
 esac
 
-if [[ -n "$ALL_DEPS" ]]; then
-    DEPENDS_JOINED=$(join_deps "$ALL_DEPS")
+if [[ "$INSTALL_METHOD" != "pip" && "$INSTALL_METHOD" != "python-script" ]]; then
+    PKG_ONLY_DEPS="${ALL_DEPS:-}"
+    PIP_ONLY_DEPS=""
+fi
+
+if [[ -n "${PKG_ONLY_DEPS:-}" ]]; then
+    DEPENDS_JOINED=$(join_deps "$PKG_ONLY_DEPS")
 else
     DEPENDS_JOINED=""
 fi
-ok "Dependencies : ${W}${DEPENDS_JOINED:-none}${N}"
+ok "pkg deps : ${W}${DEPENDS_JOINED:-none}${N}"
+ok "pip deps : ${W}${PIP_ONLY_DEPS:-none}${N}"
 
 step "Checksum"
 
@@ -596,7 +706,7 @@ read -rp "  Continue? [Y/n]: " _CONT
 
 step "Writing build.sh"
 
-INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED")
+INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED" "${PIP_ONLY_DEPS:-}")
 
 {
     printf 'TERMUX_PKG_HOMEPAGE=%s\n'          "$HOMEPAGE"
