@@ -90,7 +90,9 @@
 
 <H1>Screenrecord</H1>
 
-| <img src=".assets/demo.gif" width="74%" alt="termux-app-store"/> |
+| Record `termux-app-store` TUI, CLI, Other tool `tasctl`, `termux-build`, `guidebook.py` |
+|:---:|
+| <img src=".assets/demo.gif" width="74%" alt="termux-app-store"/> | termux-app-store
 
 </div>
 
