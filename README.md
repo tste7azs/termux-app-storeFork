@@ -57,14 +57,34 @@
 <img src=".assets/0.jpeg" width="74%" alt="Termux App Store — Main View"/>
 
 <br/><br/>
+<H1>Tui Interface</H1>
 
-| Main Interface | Install Interface | Menu Palette |
+| TUI Main Interface | TUI Install Interface | Menu Palette |
 |:---:|:---:|:---:|
-| <img src=".assets/0main.jpg" width="220" alt="Main Interface"/> | <img src=".assets/1install.jpg" width="220" alt="Install Interface"/> | <img src=".assets/2pallete.jpg" width="220" alt="Menu Palette Interface"/> |
+| <img src=".assets/0main.jpg" width="220" alt="TUI Main Interface"/> | <img src=".assets/1install.jpg" width="220" alt="TUI Install Interface"/> | <img src=".assets/2pallete.jpg" width="220" alt="Menu Palette Interface"/> |
 | TUI main menu | Package install process | Command palette |
 
-> User-friendly with full **touchscreen** support
+> TUI User-friendly with full **touchscreen** support
 
+---
+
+<H2>CLI Interface</H2>
+
+| Other tools support | CLI Install Interface | CLI View Interface |
+|:---:|:---:|:---:|
+| <img src=".assets/0tas-and-termux-build.jpg" width="220" alt="Other tools support"/> | <img src=".assets/0cli-install.jpg" width="220" alt="CLI Install Interface"/> | <img src=".assets/0cli-view.jpg" width="220" alt="CLI View Interface"/> |
+| tasctl and termux-build | Package install process | CLI help, list and show |
+
+---
+
+<H2>GuideBook</H2>
+
+| List menu | Menu about | Menu how to upload |
+|:---:|:---:|:---:|
+| <img src=".assets/0guide-menu.png" width="220" alt="List menu"/> | <img src=".assets/0guide-about.png" width="220" alt="Menu about"/> | <img src=".assets/0guide-upload.png" width="220" alt="Menu how to upload"/> |
+| GuideBook main menu | Information termux-app-store | Guide how to upload |
+
+> GuideBook is a information, run: `python guidebook.py`
 </div>
 
 ---
