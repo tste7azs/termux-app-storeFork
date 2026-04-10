@@ -214,10 +214,12 @@ TERMUX_PKG_SHA256=""
 
 ## termux-build — Validation Tool
 
-**termux-build** is a validation and reviewer helper tool — not an auto-upload or auto-publish tool.
+`termux-build` is a validation and reviewer helper tool — not an auto-upload or auto-publish tool.
 
 ```bash
+./termux-build create <package>      # Create package for distribution
 ./termux-build lint <package>        # Lint a build script
+./termux-build init <url-repo>       # Auto create and build package for distribution
 ./termux-build check-pr <package>    # Check PR readiness
 ./termux-build doctor                # Diagnose environment
 ./termux-build suggest <package>     # Get improvement suggestions
@@ -227,8 +229,31 @@ TERMUX_PKG_SHA256=""
 ```
 
 > [!NOTE]
-> termux-build **only reads and validates** — it does not modify files, auto-build, or upload to GitHub.
+> termux-build **only reads and validates** — it does not modify files, or upload to GitHub.
 
+## tasctl — Termux App Store Controller
+
+`tasctl` is a controller termux-app-store system
+
+```bash
+./tasctl install       # Install Termux App Store (latest)
+./tasctl update        # Update to latest version
+./tasctl uninstall     # Remove Termux App Store
+./tasctl doctor        # Diagnose environment
+./tasctl self-update   # Update tasctl itself
+./tasctl help          # Show this help
+```
+
+## guidebook — All Information Termux App Store
+
+`guidebook.py` is a information use, build, contributing to Termux App Store
+
+```bash
+python guidebook.py
+```
+
+> [!NOTE]
+> guidebook currently only supports two languages: English and Indonesia
 ---
 
 ## Architecture
@@ -320,7 +345,7 @@ All contributions are welcome!
 
 ---
 
-## ❓ Help & Documentation
+## Help & Documentation
 
 | Document | Description |
 |---|---|
