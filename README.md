@@ -29,7 +29,7 @@
 
 ---
 
-## What is Termux App Store?
+# What is Termux App Store?
 
 **Termux App Store** is a **TUI (Terminal User Interface)** built with Python ([Textual](https://github.com/Textualize/textual)) and CLI that lets Termux users **browse, build, and manage tools/apps** directly on Android — no account, no telemetry, no cloud dependency.
 
@@ -39,7 +39,7 @@
 
 ---
 
-## Who Is It For?
+# Who Is It For?
 
 | User | Use Case |
 |---|---|
@@ -50,7 +50,7 @@
 
 ---
 
-## Screenshots
+# Screenshots
 
 <div align="center">
 
@@ -69,7 +69,7 @@
 
 ---
 
-## Quick Install
+# Quick Install and Uninstall
 
 ### Option 1 (Recommended)
 ```bash
@@ -114,7 +114,7 @@ or
 
 ---
 
-## Usage
+# Usage
 
 ### TUI — Interactive Interface
 ```bash
@@ -136,7 +136,7 @@ termux-app-store help                  # Full help
 
 ---
 
-## Features
+# Features
 
 <table>
 <tr>
@@ -175,7 +175,7 @@ No account, no tracking, no telemetry — fully offline.
 
 ---
 
-## Package Status Badges
+# Package Status Badges
 
 | Badge | Description |
 |---|---|
@@ -186,7 +186,7 @@ No account, no tracking, no telemetry — fully offline.
 
 ---
 
-## Adding a Package
+# Adding a Package
 
 Every package **must** have a `build.sh` file:
 
@@ -210,9 +210,23 @@ TERMUX_PKG_SHA256=""
 > See the full template in `template/build.sh`
 > or run: `./termux-build template`
 
+# Adding a Package using termux-build
+
+Open directory termux-app-store
+```bash
+cd termux-app-store
+```
+Then run
+```bash
+./termux-build create nameyourtool
+```
+
+> [!NOTE]
+> When naming, do not use spaces, use the - sign in the name. For example: this-is-my-tool
+
 ---
 
-## termux-build — Validation Tool
+## termux-build — Build package and Validation Tool
 
 `termux-build` is a validation and reviewer helper tool — not an auto-upload or auto-publish tool.
 
@@ -256,7 +270,7 @@ python guidebook.py
 > guidebook currently only supports two languages: English and Indonesia
 ---
 
-## Architecture
+# Architecture
 
 ```
 termux-app-store/
@@ -274,7 +288,7 @@ termux-app-store/
 
 ---
 
-## Security & Privacy
+# Security & Privacy
 
 <table>
 <tr>
@@ -303,7 +317,7 @@ termux-app-store/
 
 ---
 
-## Upload Your Tool to Termux App Store
+# Upload Your Tool to Termux App Store
 
 Want to share your tool with the Termux community?
 
@@ -318,7 +332,7 @@ Want to share your tool with the Termux community?
 # 1. Fork this repo
 # 2. Add your package folder:
 mkdir packages/your-tool-name
-# 3. Create build.sh from the template
+# 3. Create build.sh from the template or with termux-build
 # 4. Validate with termux-build:
 ./termux-build lint packages/your-tool-name
 # 5. Submit a Pull Request
