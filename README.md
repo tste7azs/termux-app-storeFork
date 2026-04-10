@@ -68,7 +68,7 @@
 
 ---
 
-<H2>CLI Interface</H2>
+<H1>CLI Interface</H1>
 
 | Other tools support | CLI Install Interface | CLI View Interface |
 |:---:|:---:|:---:|
@@ -77,7 +77,7 @@
 
 ---
 
-<H2>GuideBook</H2>
+<H1>GuideBook</H1>
 
 | List menu | Menu about | Menu how to upload |
 |:---:|:---:|:---:|
@@ -85,6 +85,13 @@
 | GuideBook main menu | Information termux-app-store | Guide how to upload |
 
 > GuideBook is a information, run: `python guidebook.py`
+
+---
+
+<H1>Screenrecord</H1>
+
+| <img src=".assets/demo.gif" width="74%" alt="termux-app-store"/> |
+
 </div>
 
 ---
