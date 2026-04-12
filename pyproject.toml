@@ -47,7 +47,9 @@ Repository = "https://github.com/djunekz/termux-app-store"
 
 [project.scripts]
 termux-app-store = "termux_app_store.main:main"
-tasctl = "termux_app_store.main:main"
+
+[tool.termux-app-store]
+tasctl-install-note = "Install tasctl via: bash install.sh  OR  tasctl self-update"
 
 [tool.setuptools.packages.find]
 where = ["."]
