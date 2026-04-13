@@ -280,35 +280,34 @@ jobs:
       - name: Generate Packages index per architecture
         run: |
           cd gh-pages
+          FULL_PKG="/tmp/Packages_all"
+          if ls pool/main/*.deb >/dev/null 2>&1; then
+            dpkg-scanpackages pool/main /dev/null 2>/dev/null \
+              | sed 's|^Filename: pool/main/pool/main/|Filename: pool/main/|' \
+              > "$FULL_PKG"
+          else
+            touch "$FULL_PKG"
+          fi
+
           for arch in aarch64 arm x86_64 i686; do
             PKGDIR="dists/termux/main/binary-${arch}"
             mkdir -p "$PKGDIR"
 
-            TMPPOOL="/tmp/pool_${arch}"
-            mkdir -p "$TMPPOOL"
+            awk -v arch="$arch" '
+              /^$/ { if (keep) { printf "%s\n", block; } block=""; keep=0; next }
+              /^Architecture:/ {
+                if ($2 == arch || $2 == "all") keep=1
+              }
+              { block = block $0 "\n" }
+              END { if (keep && block != "") printf "%s\n", block }
+            ' "$FULL_PKG" > "$PKGDIR/Packages"
 
-            for deb in pool/main/*.deb; do
-              [ -f "$deb" ] || continue
-              DEB_ARCH=$(dpkg-deb -f "$deb" Architecture 2>/dev/null || echo "all")
-              if [ "$DEB_ARCH" = "$arch" ] || [ "$DEB_ARCH" = "all" ]; then
-                cp "$deb" "$TMPPOOL/"
-              fi
-            done
-
-            if [ -n "$(ls $TMPPOOL/*.deb 2>/dev/null)" ]; then
-              dpkg-scanpackages "$TMPPOOL" /dev/null 2>/dev/null \
-                | sed "s|$TMPPOOL/|pool/main/|g" \
-                > "$PKGDIR/Packages"
-              gzip -k "$PKGDIR/Packages"
-              COUNT=$(grep -c "^Package:" "$PKGDIR/Packages" 2>/dev/null || echo 0)
-              echo "  [$arch] $COUNT packages indexed"
-            else
-              touch "$PKGDIR/Packages"
-              gzip -k "$PKGDIR/Packages"
-              echo "  [$arch] 0 packages"
-            fi
-            rm -rf "$TMPPOOL"
+            rm -f "$PKGDIR/Packages.gz"
+            gzip -k "$PKGDIR/Packages"
+            COUNT=$(grep -c "^Package:" "$PKGDIR/Packages" 2>/dev/null || echo 0)
+            echo "  [$arch] $COUNT packages indexed"
           done
+          rm -f "$FULL_PKG"
 
       - name: Generate Release file
         run: |
