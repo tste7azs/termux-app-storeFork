@@ -188,32 +188,26 @@ jobs:
               fi
             fi
 
+            PKG_DESC="${TERMUX_PKG_DESCRIPTION:-$pkg}"
+            PKG_HOMEPAGE="${TERMUX_PKG_HOMEPAGE:-https://github.com/djunekz/termux-app-store}"
+            PKG_LICENSE="${TERMUX_PKG_LICENSE:-unknown}"
+            PKG_MAINTAINER="${TERMUX_PKG_MAINTAINER:-@termux-app-store}"
+            PKG_DEPENDS="${TERMUX_PKG_DEPENDS:-}"
+
             if [ -z "$(find $PKG_BUILD/data -type f 2>/dev/null)" ]; then
               mkdir -p "$INSTALL_DIR/share/doc/$pkg"
-              cat > "$INSTALL_DIR/share/doc/$pkg/README" <<DOC
-${TERMUX_PKG_DESCRIPTION:-$pkg}
-
-Version  : $VERSION
-Homepage : ${TERMUX_PKG_HOMEPAGE:-https://github.com/djunekz/termux-app-store}
-License  : ${TERMUX_PKG_LICENSE:-unknown}
-
-Note: Binary not available for $ARCH architecture.
-DOC
+              printf '%s\n\nVersion  : %s\nHomepage : %s\nLicense  : %s\n\nNote: Binary not available for %s architecture.\n' \
+                "$PKG_DESC" "$VERSION" "$PKG_HOMEPAGE" "$PKG_LICENSE" "$ARCH" \
+                > "$INSTALL_DIR/share/doc/$pkg/README"
             fi
 
             INSTALLED_SIZE=$(du -sk "$PKG_BUILD/data" 2>/dev/null | cut -f1 || echo "1")
 
-            cat > "$PKG_BUILD/DEBIAN/control" <<CTRL
-Package: $pkg
-Version: $VERSION
-Architecture: $DEB_ARCH
-Maintainer: ${TERMUX_PKG_MAINTAINER:-@termux-app-store}
-Installed-Size: $INSTALLED_SIZE
-Homepage: ${TERMUX_PKG_HOMEPAGE:-https://github.com/djunekz/termux-app-store}
-Description: ${TERMUX_PKG_DESCRIPTION:-Package from Termux App Store}
-CTRL
-            [ -n "${TERMUX_PKG_DEPENDS:-}" ] && \
-              echo "Depends: ${TERMUX_PKG_DEPENDS}" >> "$PKG_BUILD/DEBIAN/control"
+            printf 'Package: %s\nVersion: %s\nArchitecture: %s\nMaintainer: %s\nInstalled-Size: %s\nHomepage: %s\nDescription: %s\n' \
+              "$pkg" "$VERSION" "$DEB_ARCH" "$PKG_MAINTAINER" "$INSTALLED_SIZE" "$PKG_HOMEPAGE" "$PKG_DESC" \
+              > "$PKG_BUILD/DEBIAN/control"
+            [ -n "$PKG_DEPENDS" ] && \
+              echo "Depends: $PKG_DEPENDS" >> "$PKG_BUILD/DEBIAN/control"
 
             DEB_OUT="output/${pkg}_${VERSION}_${DEB_ARCH}.deb"
             if dpkg-deb --build "$PKG_BUILD" "$DEB_OUT" 2>/dev/null; then
@@ -319,16 +313,16 @@ CTRL
       - name: Generate Release file
         run: |
           cd gh-pages
-          cat > dists/termux/Release <<RELEASE
-Origin: Termux App Store
-Label: Termux App Store
-Suite: termux
-Codename: termux
-Components: main
-Architectures: aarch64 arm x86_64 i686
-Description: Custom Termux repository by @djunekz
-Date: $(date -u "+%a, %d %b %Y %H:%M:%S UTC")
-RELEASE
+          {
+            printf 'Origin: Termux App Store\n'
+            printf 'Label: Termux App Store\n'
+            printf 'Suite: termux\n'
+            printf 'Codename: termux\n'
+            printf 'Components: main\n'
+            printf 'Architectures: aarch64 arm x86_64 i686\n'
+            printf 'Description: Custom Termux repository by @djunekz\n'
+            printf 'Date: %s\n' "$(date -u '+%a, %d %b %Y %H:%M:%S UTC')"
+          } > dists/termux/Release
 
           cd dists/termux
           for algo in MD5Sum SHA256; do
@@ -351,99 +345,91 @@ RELEASE
         run: |
           cp source/install-repo.py gh-pages/install-repo.py
 
+      - name: Write index generator script
+        run: |
+          cat > /tmp/gen_index.py << 'ENDOFSCRIPT'
+          import sys
+          total = sys.argv[1]
+          pkg_rows = sys.argv[2]
+          last_updated = sys.argv[3]
+          print(f"""<!DOCTYPE html>
+          <html lang="en">
+          <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Termux App Store</title>
+          <style>
+          *{{box-sizing:border-box;margin:0;padding:0}}
+          body{{font-family:'Courier New',monospace;background:#0d1117;color:#c9d1d9;padding:24px 16px;line-height:1.6}}
+          .wrap{{max-width:760px;margin:0 auto}}
+          h1{{color:#58a6ff;font-size:22px;margin-bottom:4px}}
+          .sub{{color:#8b949e;font-size:13px;margin-bottom:24px}}
+          h2{{color:#79c0ff;font-size:12px;font-weight:bold;margin:28px 0 8px;text-transform:uppercase;letter-spacing:.08em}}
+          pre{{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;overflow-x:auto;font-size:13px}}
+          code{{color:#7ee787}}
+          a{{color:#58a6ff;text-decoration:none}}
+          a:hover{{text-decoration:underline}}
+          table{{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}}
+          th{{text-align:left;padding:6px 12px;color:#8b949e;border-bottom:1px solid #21262d;font-weight:normal}}
+          td{{padding:5px 12px;border-bottom:1px solid #161b22}}
+          td:first-child{{color:#7ee787}}
+          td:nth-child(2){{color:#e3b341;min-width:80px}}
+          td:nth-child(3){{color:#8b949e}}
+          tr:hover td{{background:#161b22}}
+          .badges{{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}}
+          .badge{{background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;font-size:11px;padding:2px 10px;border-radius:12px}}
+          .badge.green{{background:#23863622;color:#3fb950;border-color:#23863655}}
+          footer{{margin-top:48px;color:#484f58;font-size:12px;border-top:1px solid #21262d;padding-top:16px}}
+          </style>
+          </head>
+          <body>
+          <div class="wrap">
+          <h1>Termux App Store</h1>
+          <p class="sub">by <a href="https://github.com/djunekz">@djunekz</a> &nbsp;&middot;&nbsp;
+            <a href="https://github.com/djunekz/termux-app-store">GitHub</a></p>
+          <div class="badges">
+            <span class="badge green">{total} packages</span>
+            <span class="badge">aarch64</span><span class="badge">arm</span>
+            <span class="badge">x86_64</span><span class="badge">i686</span>
+          </div>
+          <h2>Quick Setup</h2>
+          <pre><code>curl -fsSL https://djunekz.github.io/termux-app-store/install-repo.py | python</code></pre>
+          <h2>Available packages ({total})</h2>
+          <table>
+          <thead><tr><th>Package</th><th>Version</th><th>Description</th></tr></thead>
+          <tbody>{pkg_rows}</tbody>
+          </table>
+          <h2>Repository links</h2>
+          <pre><code>dists/termux/main/binary-aarch64/Packages
+          dists/termux/main/binary-arm/Packages
+          dists/termux/main/binary-x86_64/Packages
+          dists/termux/main/binary-i686/Packages</code></pre>
+          <footer>Last updated: {last_updated}</footer>
+          </div></body></html>""")
+          ENDOFSCRIPT
+
+      - name: Collect package rows for index
+        id: pkgrows
+        run: |
+          PKG_ROWS=""
+          for pkg_dir in source/packages/*/; do
+            pkg=$(basename "$pkg_dir")
+            unset TERMUX_PKG_VERSION TERMUX_PKG_DESCRIPTION 2>/dev/null || true
+            source "$pkg_dir/build.sh" 2>/dev/null || true
+            V="${TERMUX_PKG_VERSION:-}"
+            D="${TERMUX_PKG_DESCRIPTION:-}"
+            PKG_ROWS+="<tr><td>${pkg}</td><td>${V}</td><td>${D}</td></tr>"
+          done
+          echo "rows=${PKG_ROWS}" >> "$GITHUB_OUTPUT"
+
       - name: Generate index.html
+        env:
+          PKG_ROWS: ${{ steps.pkgrows.outputs.rows }}
         run: |
           cd gh-pages
           TOTAL=$(grep -c "^Package:" dists/termux/main/binary-aarch64/Packages 2>/dev/null || echo 0)
-
-          PKG_ROWS=""
-          for pkg_dir in ../source/packages/*/; do
-            pkg=$(basename "$pkg_dir")
-            unset TERMUX_PKG_VERSION TERMUX_PKG_DESCRIPTION TERMUX_PKG_HOMEPAGE \
-                  TERMUX_PKG_SRCURL TERMUX_PKG_SHA256 TERMUX_PKG_DEPENDS \
-                  TERMUX_PKG_LICENSE TERMUX_PKG_MAINTAINER 2>/dev/null || true
-            source "../source/${pkg_dir}/build.sh" 2>/dev/null || true
-            V="${TERMUX_PKG_VERSION:-}"
-            D="${TERMUX_PKG_DESCRIPTION:-}"
-            PKG_ROWS+="<tr><td>$pkg</td><td>${V}</td><td>${D}</td></tr>"
-          done
-
-          cat > index.html <<HTML
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Termux App Store · Repository</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Courier New',monospace;background:#0d1117;color:#c9d1d9;padding:24px 16px;line-height:1.6}
-.wrap{max-width:760px;margin:0 auto}
-h1{color:#58a6ff;font-size:22px;margin-bottom:4px}
-.sub{color:#8b949e;font-size:13px;margin-bottom:24px}
-h2{color:#79c0ff;font-size:12px;font-weight:bold;margin:28px 0 8px;text-transform:uppercase;letter-spacing:.08em}
-pre{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;overflow-x:auto;font-size:13px}
-code{color:#7ee787}
-a{color:#58a6ff;text-decoration:none}
-a:hover{text-decoration:underline}
-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
-th{text-align:left;padding:6px 12px;color:#8b949e;border-bottom:1px solid #21262d;font-weight:normal}
-td{padding:5px 12px;border-bottom:1px solid #161b22}
-td:first-child{color:#7ee787}
-td:nth-child(2){color:#e3b341;min-width:80px}
-td:nth-child(3){color:#8b949e}
-tr:hover td{background:#161b22}
-.badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
-.badge{background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;font-size:11px;padding:2px 10px;border-radius:12px}
-.badge.green{background:#23863622;color:#3fb950;border-color:#23863655}
-footer{margin-top:48px;color:#484f58;font-size:12px;border-top:1px solid #21262d;padding-top:16px}
-</style>
-</head>
-<body>
-<div class="wrap">
-<h1>Termux App Store</h1>
-<p class="sub">by <a href="https://github.com/djunekz">@djunekz</a> &nbsp;·&nbsp;
-  <a href="https://github.com/djunekz/termux-app-store">GitHub</a></p>
-<div class="badges">
-  <span class="badge green">$TOTAL packages</span>
-  <span class="badge">aarch64</span>
-  <span class="badge">arm</span>
-  <span class="badge">x86_64</span>
-  <span class="badge">i686</span>
-</div>
-
-<h2>Quick Setup</h2>
-<pre><code># Automatic (recommended):
-curl -fsSL https://djunekz.github.io/termux-app-store/install-repo.py | python
-
-# Manual:
-echo "deb [trusted=yes] https://djunekz.github.io/termux-app-store termux main" \\
-  > \$PREFIX/etc/apt/sources.list.d/tas.list
-pkg update</code></pre>
-
-<h2>Install a package</h2>
-<pre><code>pkg install baxter
-pkg install aura</code></pre>
-
-<h2>Available packages ($TOTAL)</h2>
-<table>
-<thead><tr><th>Package</th><th>Version</th><th>Description</th></tr></thead>
-<tbody>$PKG_ROWS</tbody>
-</table>
-
-<h2>Repository links</h2>
-<pre><code>Packages (aarch64) : <a href="dists/termux/main/binary-aarch64/Packages">dists/termux/main/binary-aarch64/Packages</a>
-Packages (arm)     : <a href="dists/termux/main/binary-arm/Packages">dists/termux/main/binary-arm/Packages</a>
-Packages (x86_64)  : <a href="dists/termux/main/binary-x86_64/Packages">dists/termux/main/binary-x86_64/Packages</a>
-Packages (i686)    : <a href="dists/termux/main/binary-i686/Packages">dists/termux/main/binary-i686/Packages</a>
-Release            : <a href="dists/termux/Release">dists/termux/Release</a>
-Pool               : <a href="pool/main/">pool/main/</a></code></pre>
-
-<footer>Last updated: $(date -u "+%Y-%m-%d %H:%M UTC")</footer>
-</div>
-</body>
-</html>
-HTML
+          LAST_UPDATED=$(date -u '+%Y-%m-%d %H:%M UTC')
+          python3 /tmp/gen_index.py "$TOTAL" "$PKG_ROWS" "$LAST_UPDATED" > index.html
 
       - name: Commit and push to gh-pages
         run: |
@@ -458,4 +444,3 @@ HTML
             git commit -m "repo: $TOTAL pkgs, multi-arch [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
             git push origin gh-pages
           fi
-                         
