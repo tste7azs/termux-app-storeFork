@@ -1,10 +1,3 @@
-# Don't edit this actions
-# Supported Termux architectures:
-# aarch64 = Android ARM 64-bit (most modern devices)
-# arm     = Android ARM 32-bit (older devices)
-# x86_64  = emulator / ChromeOS
-# i686    = 32-bit emulator
-
 name: Build Termux Repository
 
 permissions:
