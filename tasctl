@@ -6,13 +6,10 @@ CTL_NAME="tasctl"
 INSTALL_DIR="$PREFIX/lib/.tas"
 BIN_DIR="$PREFIX/bin"
 REPO="djunekz/termux-app-store"
-BIN_PATH="$INSTALL_DIR/$APP_NAME"
 SENTINEL="$INSTALL_DIR/.installed"
 SYMLINK="$BIN_DIR/$APP_NAME"
 TASCTL_SYMLINK="$BIN_DIR/$CTL_NAME"
-GITHUB_API="https://api.github.com/repos/$REPO/releases/latest"
 TASCTL_RAW="https://raw.githubusercontent.com/$REPO/master/tasctl"
-CHECKSUMS_FILENAME="checksums.sha256"
 
 R=$'\033[0m'
 B=$'\033[1m'
@@ -49,80 +46,6 @@ banner() {
   printf "               %sby %s@djunekz%s\n\n" "$DIM$YELLOW" "$GREEN" "$R"
 }
 
-detect_arch() {
-  case "$(uname -m)" in
-    aarch64)       echo "termux-app-store-aarch64" ;;
-    armv7l|armv8l) echo "termux-app-store-arm" ;;
-    x86_64)        echo "termux-app-store-x86_64" ;;
-    i686|i386)     echo "termux-app-store-i686" ;;
-    *) err "Unsupported architecture: $(uname -m)" ;;
-  esac
-}
-
-fetch_latest_tag() {
-  curl -fsSL \
-    -H "Accept: application/vnd.github+json" \
-    "$GITHUB_API" 2>/dev/null \
-    | grep '"tag_name"' \
-    | head -1 \
-    | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/'
-}
-
-fetch_checksum() {
-  local tag="$1"
-  local url="https://github.com/$REPO/releases/download/$tag/$CHECKSUMS_FILENAME"
-  curl -fsSL "$url" 2>/dev/null || true
-}
-
-verify_binary() {
-  local tag="$1"
-  local bin_name="$2"
-  local bin_path="$3"
-
-  step "Verifying SHA256 checksum..."
-  info "Fetching: $CHECKSUMS_FILENAME from release $tag"
-
-  local checksum_data
-  checksum_data=$(fetch_checksum "$tag")
-
-  if [[ -z "$checksum_data" ]]; then
-    warn "checksums.sha256 not found in release $tag — skipping verification."
-    warn "To generate it, add 'sha256sum termux-app-store-* > checksums.sha256' to your release workflow."
-    return 0
-  fi
-
-  local expected_hash
-  expected_hash=$(printf '%s\n' "$checksum_data" \
-    | awk -v name="$bin_name" '$2 == name || $2 == "./" name {print $1}' \
-    | head -1)
-
-  if [[ -z "$expected_hash" ]]; then
-    warn "No checksum entry found for '$bin_name' in checksums.sha256 — skipping."
-    return 0
-  fi
-
-  info "Expected : $expected_hash"
-
-  local actual_hash
-  actual_hash=$(sha256sum "$bin_path" 2>/dev/null | awk '{print $1}')
-
-  if [[ -z "$actual_hash" ]]; then
-    err "sha256sum failed — cannot verify binary integrity."
-  fi
-
-  info "Actual   : $actual_hash"
-
-  if [[ "$expected_hash" != "$actual_hash" ]]; then
-    rm -f "$bin_path"
-    err "SHA256 mismatch! Binary may be corrupted or tampered with.
-     Expected : $expected_hash
-     Actual   : $actual_hash
-     File removed for safety. Re-run: $CTL_NAME install"
-  fi
-
-  ok "SHA256 verified: $bin_name is authentic."
-}
-
 get_installed_version() {
   if [[ -f "$SENTINEL" ]]; then
     local ver
@@ -137,13 +60,6 @@ get_installed_version() {
     [[ -n "$ver" ]] && echo "$ver" && return
   fi
 
-  if [[ -f "$BIN_PATH" ]] && file "$BIN_PATH" 2>/dev/null | grep -q ELF; then
-    local ver
-    ver=$(strings "$BIN_PATH" 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+' | head -1 \
-      | sed 's/^v//' || true)
-    [[ -n "$ver" ]] && echo "$ver" && return
-  fi
-
   echo "unknown"
 }
 
@@ -152,15 +68,13 @@ get_install_mode() {
     grep '^mode=' "$SENTINEL" 2>/dev/null | cut -d= -f2 || echo "unknown"
   elif [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]]; then
     echo "source"
-  elif [[ -f "$BIN_PATH" ]] && file "$BIN_PATH" 2>/dev/null | grep -q ELF; then
-    echo "binary"
   else
     echo "unknown"
   fi
 }
 
 is_installed() {
-  [[ -f "$BIN_PATH" ]] || [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]]
+  [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]]
 }
 
 write_sentinel() {
@@ -175,96 +89,25 @@ EOF
 
 create_wrapper() {
   local ver="$1"
-  local mode="$2"
 
   {
     printf '#!/data/data/com.termux/files/usr/bin/bash\n'
     printf 'export TERMUX_APP_STORE_VERSION="%s"\n' "$ver"
     printf 'export TERMUX_APP_STORE_HOME="%s"\n' "$INSTALL_DIR"
     printf '\n'
-    if [[ "$mode" == "source" ]]; then
-      printf 'exec python3 "%s/termux_app_store/main.py" "$@"\n' "$INSTALL_DIR"
-    else
-      printf 'export TERMUX_APP_STORE_HOME="%s"\n' "$INSTALL_DIR"
-      printf 'exec "%s" "$@"\n' "$BIN_PATH"
-    fi
+    printf 'exec python3 "%s/termux_app_store/main.py" "$@"\n' "$INSTALL_DIR"
   } > "$SYMLINK"
 
   chmod +x "$SYMLINK"
   ok "Wrapper created: $SYMLINK"
 }
 
-install_app() {
-  local mode="${1:-install}"
-  local tag bin_name url
 
-  step "Fetching latest release info..."
-  tag=$(fetch_latest_tag)
-  if [[ -z "$tag" ]]; then
-    err "Cannot fetch release info. Check your internet connection."
-  fi
-  printf " %s[✔]%s Latest version: %s%s%s\n" "$GREEN$B" "$R" "$GREEN$B" "$tag" "$R"
-
-  bin_name=$(detect_arch)
-  url="https://github.com/$REPO/releases/download/$tag/$bin_name"
-
-  step "Downloading $bin_name $tag..."
-  info "Arch : $(uname -m)"
-  info "File : $bin_name"
-  info "URL  : $url"
-
-  mkdir -p "$INSTALL_DIR"
-  if curl -fL --progress-bar "$url" -o "$BIN_PATH"; then
-    chmod +x "$BIN_PATH"
-  else
-    err "Download failed. Check your internet connection."
-  fi
-
-  verify_binary "$tag" "$bin_name" "$BIN_PATH"
-
-  step "Cloning repo data (packages/, tools/)..."
-  if ! command -v git >/dev/null 2>&1; then
-    info "Installing git..."
-    pkg install -y git || err "Failed to install git"
-  fi
-  local tmp_repo
-  tmp_repo=$(mktemp -d)
-  git clone --depth=1 "https://github.com/$REPO.git" "$tmp_repo" \
-    || err "Failed to clone repository"
-
-  if [[ -d "$tmp_repo/packages" ]]; then
-    cp -r "$tmp_repo/packages" "$INSTALL_DIR/"
-    ok "packages/ copied"
-  fi
-  if [[ -d "$tmp_repo/tools" ]]; then
-    cp -r "$tmp_repo/tools" "$INSTALL_DIR/"
-    ok "tools/ copied"
-  fi
-  if [[ -f "$tmp_repo/build-package.sh" ]]; then
-    cp "$tmp_repo/build-package.sh" "$INSTALL_DIR/"
-    chmod +x "$INSTALL_DIR/build-package.sh"
-    ok "build-package.sh copied"
-  fi
-  for _f in "$tmp_repo"/.tas-store "$tmp_repo"/.fingerprint "$tmp_repo"/termux-app-store.json; do
-    [[ -f "$_f" ]] && cp "$_f" "$INSTALL_DIR/" && ok "$(basename $_f) copied"
-  done
-  rm -rf "$tmp_repo"
-
-  local ver="${tag#v}"
-  write_sentinel "$ver" "binary"
-
-  step "Creating wrapper..."
-  create_wrapper "$ver" "binary"
-
-  printf "\n%s  ✔ %s %s %sed successfully!%s\n" "$GREEN$B" "$APP_NAME" "$tag" "$mode" "$R"
-  info "Run with: ${CYAN}$APP_NAME${R}"
-  printf "\n"
-}
 
 install_app_source() {
   local mode="${1:-install}"
 
-  step "Checking dependencies for source install..."
+  step "Checking dependencies..."
 
   if ! command -v git >/dev/null 2>&1; then
     info "Installing git..."
@@ -287,7 +130,7 @@ install_app_source() {
   fi
   ok "textual found"
 
-  step "Cloning repository (source install)..."
+  step "Cloning repository..."
   info "Repo  : https://github.com/$REPO.git"
   info "Target: $INSTALL_DIR"
 
@@ -315,8 +158,8 @@ install_app_source() {
 
   write_sentinel "$ver" "source"
 
-  step "Creating wrapper (source mode)..."
-  create_wrapper "$ver" "source"
+  step "Creating wrapper..."
+  create_wrapper "$ver"
 
   if [[ -f "$INSTALL_DIR/tasctl" ]]; then
     chmod +x "$INSTALL_DIR/tasctl"
@@ -324,11 +167,11 @@ install_app_source() {
     ok "tasctl symlinked: $TASCTL_SYMLINK → $INSTALL_DIR/tasctl"
   fi
 
-  printf "\n%s  ✔ %s v%s %sed (source) successfully!%s\n" \
+  printf "\n%s  ✔ %s v%s %sed successfully!%s\n" \
     "$GREEN$B" "$APP_NAME" "$ver" "$mode" "$R"
   info "Run with : ${CYAN}$APP_NAME${R}"
   info "Source at: ${DIM}$INSTALL_DIR${R}"
-  info "Update   : ${DIM}tasctl update --source${R}"
+  info "Update   : ${DIM}tasctl update${R}"
   printf "\n"
 }
 
@@ -363,15 +206,9 @@ cmd_doctor() {
   local all_ok=true
 
   printf "\n %sArchitecture%s\n" "$B" "$R"
-  local arch bin_name
+  local arch
   arch=$(uname -m)
-  bin_name=$(detect_arch 2>/dev/null || echo "unsupported")
-  if [[ "$bin_name" != "unsupported" ]]; then
-    ok "$arch → binary: $bin_name"
-  else
-    warn "Unsupported architecture: $arch"
-    all_ok=false
-  fi
+  ok "Architecture: $arch"
 
   printf "\n %sPython%s\n" "$B" "$R"
   if command -v python3 >/dev/null 2>&1; then
@@ -427,10 +264,7 @@ cmd_doctor() {
     info "Mode    : $imode"
     if [[ "$imode" == "source" ]]; then
       [[ -f "$INSTALL_DIR/termux_app_store/main.py" ]] \
-        && ok "main.py OK" || { warn "main.py missing"; all_ok=false; }
-    else
-      [[ -f "$BIN_PATH" ]] \
-        && ok "Binary OK: $BIN_PATH" || { warn "Binary missing"; all_ok=false; }
+        && ok "Termux App Store OK" || { warn "Termux App Store missing"; all_ok=false; }
     fi
     [[ -f "$SYMLINK" ]] || [[ -L "$SYMLINK" ]] \
       && ok "Wrapper OK: $SYMLINK" \
@@ -447,7 +281,7 @@ cmd_doctor() {
     fi
   else
     warn "$APP_NAME not installed"
-    info "Fix: $CTL_NAME install   or   bash install.sh"
+    info "Fix: $CTL_NAME install"
     all_ok=false
   fi
 
@@ -505,48 +339,25 @@ usage() {
   printf "  %s%s%s %s<command> [options]%s\n\n" "$CYAN" "$CTL_NAME" "$R" "$B" "$R"
 
   printf "%sCOMMANDS%s\n" "$CYAN$B" "$R"
-  printf "  %sinstall%s           Install Termux App Store (binary, default)\n" "$GREEN$B" "$R"
-  printf "  %sinstall --source%s  Install from source via git clone\n" "$GREEN$B" "$R"
-  printf "  %sinstall --binary%s  Install prebuilt binary (explicit)\n" "$GREEN$B" "$R"
-  printf "  %supdate%s            Update to latest version (same mode as install)\n" "$GREEN$B" "$R"
-  printf "  %supdate --source%s   Update using source mode\n" "$GREEN$B" "$R"
+  printf "  %sinstall%s           Install Termux App Store (from source)\n" "$GREEN$B" "$R"
+  printf "  %supdate%s            Update to latest version (from source)\n" "$GREEN$B" "$R"
   printf "  %suninstall%s         Remove Termux App Store\n" "$GREEN$B" "$R"
   printf "  %sdoctor%s            Diagnose environment\n" "$GREEN$B" "$R"
   printf "  %sself-update%s       Update tasctl itself\n" "$GREEN$B" "$R"
   printf "  %shelp%s              Show this help\n" "$GREEN$B" "$R"
 
-  printf "\n%sOPTIONS%s\n" "$CYAN$B" "$R"
-  printf "  %s--source%s  Install/update from git clone (no prebuilt binary needed)\n" "$B" "$R"
-  printf "             Useful for unsupported architectures or contributors\n"
-  printf "  %s--binary%s  Install/update using prebuilt binary release (default)\n" "$B" "$R"
-
   printf "\n%sEXAMPLES%s\n" "$CYAN$B" "$R"
   printf "  %s%s install%s\n" "$DIM" "$CTL_NAME" "$R"
-  printf "  %s%s install --source%s\n" "$DIM" "$CTL_NAME" "$R"
   printf "  %s%s update%s\n" "$DIM" "$CTL_NAME" "$R"
-  printf "  %s%s update --source%s\n" "$DIM" "$CTL_NAME" "$R"
   printf "  %s%s doctor%s\n" "$DIM" "$CTL_NAME" "$R"
   printf "  %s%s self-update%s\n" "$DIM" "$CTL_NAME" "$R"
   printf "\n"
 }
 
 cmd_update() {
-  local flag="${1:-}"
   banner
   header "Update"
-  if [[ "$flag" == "--source" ]]; then
-    install_app_source "update"
-  else
-    local _current_mode
-    _current_mode=$(get_install_mode)
-    if [[ "$_current_mode" == "source" ]]; then
-      info "Detected source install — updating via source mode."
-      info "To switch to binary: $CTL_NAME install --binary"
-      install_app_source "update"
-    else
-      install_app "update"
-    fi
-  fi
+  install_app_source "update"
 }
 
 cmd="${1:-help}"
@@ -556,14 +367,10 @@ case "$cmd" in
   install)
     banner
     header "Install"
-    if [[ "$flag" == "--source" ]]; then
-      install_app_source "install"
-    else
-      install_app "install"
-    fi
+    install_app_source "install"
     ;;
   update)
-    cmd_update "$flag"
+    cmd_update
     ;;
   uninstall)
     uninstall_app
