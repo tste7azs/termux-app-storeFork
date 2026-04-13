@@ -58,6 +58,8 @@ jobs:
             SRCURL="${TERMUX_PKG_SRCURL:-}"
             SRCURL="${SRCURL//\$\{TERMUX_PKG_VERSION\}/$VERSION}"
             SRCURL="${SRCURL//\${TERMUX_PKG_VERSION}/$VERSION}"
+            SRCURL="${SRCURL//\{\$TERMUX_PKG_VERSION\}/$VERSION}"
+            SRCURL="${SRCURL//{\$TERMUX_PKG_VERSION}/$VERSION}"
 
             PKG_BUILD="build_tmp/${pkg}_${ARCH}"
             INSTALL_DIR="$PKG_BUILD/data/data/com.termux/files/usr"
@@ -140,8 +142,8 @@ jobs:
 
                   if [ -d "$TMPEXT" ] && [ -z "$(ls -A $INSTALL_DIR/bin/ 2>/dev/null)" ]; then
                     BIN=""
-                    for candidate in $(find "$TMPEXT" -maxdepth 4 -type f \
-                        \( -name "$pkg" -o -name "${pkg}-${ARCH}" \) 2>/dev/null); do
+
+                    for candidate in $(find "$TMPEXT" -maxdepth 4 -type f                         \( -name "$pkg" -o -name "${pkg}.sh" -o -name "${pkg}.py"                            -o -name "${pkg}-${ARCH}" \) 2>/dev/null); do
                       CTYPE=$(file -b "$candidate" | tr '[:upper:]' '[:lower:]')
                       if echo "$CTYPE" | grep -q "elf"; then
                         CARCH=""
@@ -169,24 +171,58 @@ jobs:
                             *80386*|*i386*|*i686*) CARCH="i686" ;;
                           esac
                           [ -z "$CARCH" ] || [ "$CARCH" = "$ARCH" ] && BIN="$candidate" && break
-                        else
-                          BIN="$candidate" && break
                         fi
                       done
                     fi
 
+                    if [ -z "$BIN" ]; then
+                      for candidate in $(find "$TMPEXT" -maxdepth 4 -type f                           \( -name "main.py" -o -name "main.sh"                              -o -name "${pkg}.py" -o -name "${pkg}.sh" \) 2>/dev/null); do
+                        BIN="$candidate" && break
+                      done
+                    fi
+
+                    PKG_SHARE="$INSTALL_DIR/share/$pkg"
+                    mkdir -p "$PKG_SHARE"
+                    find "$TMPEXT" -maxdepth 6 -type f | while read srcfile; do
+                      relpath="${srcfile#$TMPEXT/}"
+                      relpath="${relpath#*/}"
+                      destdir="$PKG_SHARE/$(dirname $relpath)"
+                      mkdir -p "$destdir"
+                      cp "$srcfile" "$destdir/"
+                    done
+                    echo "  Copied source tree to share/$pkg/"
+
                     if [ -n "$BIN" ]; then
                       cp "$BIN" "$INSTALL_DIR/bin/$pkg"
                       chmod +x "$INSTALL_DIR/bin/$pkg"
-                      echo "  Installed from archive: $(basename $BIN)"
+                      echo "  Installed binary: $(basename $BIN)"
+                    else
+                      MAIN_SCRIPT=""
+                      for candidate in "$PKG_SHARE/${pkg}.py" "$PKG_SHARE/main.py"                                        "$PKG_SHARE/${pkg}.sh" "$PKG_SHARE/main.sh"                                        "$PKG_SHARE/${pkg}"; do
+                        [ -f "$candidate" ] && MAIN_SCRIPT="$candidate" && break
+                      done
+                      if [ -z "$MAIN_SCRIPT" ]; then
+                        MAIN_SCRIPT=$(find "$PKG_SHARE" -maxdepth 2 -name "*.py" | head -1)
+                      fi
+                      if [ -z "$MAIN_SCRIPT" ]; then
+                        MAIN_SCRIPT=$(find "$PKG_SHARE" -maxdepth 2 -name "*.sh" | head -1)
+                      fi
 
-                      COMPANIONS=$(find "$TMPEXT" -maxdepth 4 -type f ! -name "$(basename $BIN)"                         \( -name "*.py" -o -name "*.sh" -o -name "*.conf" -o -name "*.json" \) 2>/dev/null)
-                      if [ -n "$COMPANIONS" ]; then
-                        mkdir -p "$INSTALL_DIR/share/$pkg"
-                        for cf in $COMPANIONS; do
-                          cp "$cf" "$INSTALL_DIR/share/$pkg/"
-                          echo "  Companion file: $(basename $cf) -> share/$pkg/"
-                        done
+                      if [ -n "$MAIN_SCRIPT" ]; then
+                        SCRIPT_NAME=$(basename "$MAIN_SCRIPT")
+                        WRAPPER_FILE="$INSTALL_DIR/bin/$pkg"
+                        case "$SCRIPT_NAME" in
+                          *.py)
+                            printf '%s\n'                               "#!/data/data/com.termux/files/usr/bin/python3"                               "import sys, os"                               "os.chdir(os.path.dirname(os.path.realpath(__file__)) + \"/../share/$pkg\")"                               "sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + \"/../share/$pkg\")"                               "exec(open(os.path.dirname(os.path.realpath(__file__)) + \"/../share/$pkg/$SCRIPT_NAME\").read())"                               > "$WRAPPER_FILE"
+                            ;;
+                          *)
+                            printf '%s\n'                               "#!/data/data/com.termux/files/usr/bin/bash"                               "cd \"\$(dirname \"\$0\")/../share/$pkg\""                               "exec bash \"$SCRIPT_NAME\" \"\$@\""                               > "$WRAPPER_FILE"
+                            ;;
+                        esac
+                        chmod +x "$WRAPPER_FILE"
+                        echo "  Created wrapper -> share/$pkg/$SCRIPT_NAME"
+                      else
+                        echo "  WARNING: No runnable entry point found for $pkg"
                       fi
                     fi
                   fi
@@ -291,7 +327,6 @@ jobs:
       - name: Generate Packages index per architecture
         run: |
           cd gh-pages
-          # Generate full Packages index from pool/main/ with correct relative paths
           FULL_PKG="/tmp/Packages_all"
           if ls pool/main/*.deb >/dev/null 2>&1; then
             dpkg-scanpackages pool/main /dev/null 2>/dev/null \
@@ -305,7 +340,6 @@ jobs:
             PKGDIR="dists/termux/main/binary-${arch}"
             mkdir -p "$PKGDIR"
 
-            # Extract packages matching this arch or "all" from the full index
             awk -v arch="$arch" '
               /^$/ { if (keep) { printf "%s\n", block; } block=""; keep=0; next }
               /^Architecture:/ {
