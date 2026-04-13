@@ -1,0 +1,468 @@
+# Don't edit this actions
+# Supported Termux architectures:
+# aarch64 = Android ARM 64-bit (most modern devices)
+# arm     = Android ARM 32-bit (older devices)
+# x86_64  = emulator / ChromeOS
+# i686    = 32-bit emulator
+
+name: Build Termux Repository
+
+permissions:
+  contents: write
+
+on:
+  push:
+    paths:
+      - 'packages/*/build.sh'
+    branches: [master]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  build-debs:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [aarch64, arm, x86_64, i686]
+        include:
+          - arch: aarch64
+            deb_arch: aarch64
+          - arch: arm
+            deb_arch: arm
+          - arch: x86_64
+            deb_arch: x86_64
+          - arch: i686
+            deb_arch: i686
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y dpkg-dev wget file
+
+      - name: Build .deb packages for arch=${{ matrix.arch }}
+        run: |
+          ARCH="${{ matrix.arch }}"
+          DEB_ARCH="${{ matrix.deb_arch }}"
+          mkdir -p output build_tmp
+
+          for pkg_dir in packages/*/; do
+            pkg=$(basename "$pkg_dir")
+            [ -f "$pkg_dir/build.sh" ] || continue
+            echo "──── [$ARCH] Building: $pkg"
+
+            unset TERMUX_PKG_VERSION TERMUX_PKG_SRCURL TERMUX_PKG_SHA256
+            unset TERMUX_PKG_DESCRIPTION TERMUX_PKG_HOMEPAGE TERMUX_PKG_LICENSE
+            unset TERMUX_PKG_MAINTAINER TERMUX_PKG_DEPENDS TERMUX_PKG_BUILD_IN_SRC
+            source "$pkg_dir/build.sh" 2>/dev/null || true
+
+            VERSION="${TERMUX_PKG_VERSION:-1.0.0}"
+
+            SRCURL="${TERMUX_PKG_SRCURL:-}"
+            SRCURL="${SRCURL//\$\{TERMUX_PKG_VERSION\}/$VERSION}"
+            SRCURL="${SRCURL//\${TERMUX_PKG_VERSION}/$VERSION}"
+
+            PKG_BUILD="build_tmp/${pkg}_${ARCH}"
+            INSTALL_DIR="$PKG_BUILD/data/data/com.termux/files/usr"
+            mkdir -p "$PKG_BUILD/DEBIAN" "$INSTALL_DIR/bin"
+
+            DOWNLOAD_SUCCESS=false
+
+            if [ -n "$SRCURL" ]; then
+              TMPFILE="/tmp/${pkg}_${ARCH}_src"
+              echo "  Downloading: $SRCURL"
+
+              if wget -q --timeout=60 --tries=3 "$SRCURL" -O "$TMPFILE" 2>/dev/null; then
+
+                if [ -n "${TERMUX_PKG_SHA256:-}" ]; then
+                  ACTUAL=$(sha256sum "$TMPFILE" | cut -d' ' -f1)
+                  if [ "$ACTUAL" != "$TERMUX_PKG_SHA256" ]; then
+                    echo "  SKIP [$ARCH]: SHA256 mismatch"
+                    echo "    Expected : $TERMUX_PKG_SHA256"
+                    echo "    Got      : $ACTUAL"
+                    rm -f "$TMPFILE"
+                  else
+                    echo "  SHA256: OK"
+                    DOWNLOAD_SUCCESS=true
+                  fi
+                else
+                  DOWNLOAD_SUCCESS=true
+                fi
+
+                if [ "$DOWNLOAD_SUCCESS" = "true" ]; then
+                  FILETYPE=$(file -b "$TMPFILE" | tr '[:upper:]' '[:lower:]')
+                  FNAME=$(basename "$SRCURL" | cut -d'?' -f1)
+                  TMPEXT="/tmp/ext_${pkg}_${ARCH}"
+                  mkdir -p "$TMPEXT"
+
+                  case "$FNAME" in
+                    *.tar.gz|*.tgz)
+                      tar -xzf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
+                    *.tar.xz)
+                      tar -xJf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
+                    *.tar.bz2)
+                      tar -xjf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
+                    *.zip)
+                      unzip -q "$TMPFILE" -d "$TMPEXT" 2>/dev/null || true ;;
+                    *.deb)
+                      DEB_PKG_ARCH=$(dpkg-deb -f "$TMPFILE" Architecture 2>/dev/null || echo "all")
+                      if [ "$DEB_PKG_ARCH" = "all" ] || [ "$DEB_PKG_ARCH" = "$DEB_ARCH" ]; then
+                        dpkg-deb -x "$TMPFILE" "$PKG_BUILD/data" 2>/dev/null || true
+                        echo "  Repacked pre-built .deb (arch: $DEB_PKG_ARCH)"
+                      else
+                        echo "  SKIP: pre-built .deb arch=$DEB_PKG_ARCH does not match target $DEB_ARCH"
+                        DOWNLOAD_SUCCESS=false
+                      fi
+                      ;;
+                    *)
+                      if echo "$FILETYPE" | grep -q "elf"; then
+                        ELF_ARCH=""
+                        case "$FILETYPE" in
+                          *aarch64*|*arm64*)     ELF_ARCH="aarch64" ;;
+                          *arm*|*eabi*)          ELF_ARCH="arm" ;;
+                          *x86-64*|*x86_64*)     ELF_ARCH="x86_64" ;;
+                          *80386*|*i386*|*i686*) ELF_ARCH="i686" ;;
+                        esac
+                        if [ -z "$ELF_ARCH" ] || [ "$ELF_ARCH" = "$ARCH" ]; then
+                          cp "$TMPFILE" "$INSTALL_DIR/bin/$pkg"
+                          chmod +x "$INSTALL_DIR/bin/$pkg"
+                          echo "  Installed ELF binary (detected arch: ${ELF_ARCH:-unknown})"
+                        else
+                          echo "  SKIP: binary arch=$ELF_ARCH does not match target $ARCH"
+                          DOWNLOAD_SUCCESS=false
+                        fi
+                      else
+                        cp "$TMPFILE" "$INSTALL_DIR/bin/$pkg"
+                        chmod +x "$INSTALL_DIR/bin/$pkg"
+                        echo "  Installed script / platform-independent file"
+                      fi
+                      ;;
+                  esac
+
+                  if [ -d "$TMPEXT" ] && [ -z "$(ls -A $INSTALL_DIR/bin/ 2>/dev/null)" ]; then
+                    BIN=""
+                    for candidate in $(find "$TMPEXT" -maxdepth 4 -type f \
+                        \( -name "$pkg" -o -name "${pkg}-${ARCH}" \) 2>/dev/null); do
+                      CTYPE=$(file -b "$candidate" | tr '[:upper:]' '[:lower:]')
+                      if echo "$CTYPE" | grep -q "elf"; then
+                        CARCH=""
+                        case "$CTYPE" in
+                          *aarch64*|*arm64*)     CARCH="aarch64" ;;
+                          *arm*|*eabi*)          CARCH="arm" ;;
+                          *x86-64*|*x86_64*)     CARCH="x86_64" ;;
+                          *80386*|*i386*|*i686*) CARCH="i686" ;;
+                        esac
+                        [ -z "$CARCH" ] || [ "$CARCH" = "$ARCH" ] && BIN="$candidate" && break
+                      else
+                        BIN="$candidate" && break
+                      fi
+                    done
+
+                    if [ -z "$BIN" ]; then
+                      for candidate in $(find "$TMPEXT" -maxdepth 4 -type f -perm /111 2>/dev/null); do
+                        CTYPE=$(file -b "$candidate" | tr '[:upper:]' '[:lower:]')
+                        if echo "$CTYPE" | grep -q "elf"; then
+                          CARCH=""
+                          case "$CTYPE" in
+                            *aarch64*|*arm64*)     CARCH="aarch64" ;;
+                            *arm*|*eabi*)          CARCH="arm" ;;
+                            *x86-64*|*x86_64*)     CARCH="x86_64" ;;
+                            *80386*|*i386*|*i686*) CARCH="i686" ;;
+                          esac
+                          [ -z "$CARCH" ] || [ "$CARCH" = "$ARCH" ] && BIN="$candidate" && break
+                        else
+                          BIN="$candidate" && break
+                        fi
+                      done
+                    fi
+
+                    if [ -n "$BIN" ]; then
+                      cp "$BIN" "$INSTALL_DIR/bin/$pkg"
+                      chmod +x "$INSTALL_DIR/bin/$pkg"
+                      echo "  Installed from archive: $(basename $BIN)"
+                    fi
+                  fi
+
+                  rm -f "$TMPFILE"
+                  rm -rf "$TMPEXT"
+                fi
+              else
+                echo "  WARNING: Download failed for $pkg — building metadata-only .deb"
+              fi
+            fi
+
+            if [ -z "$(find $PKG_BUILD/data -type f 2>/dev/null)" ]; then
+              mkdir -p "$INSTALL_DIR/share/doc/$pkg"
+              cat > "$INSTALL_DIR/share/doc/$pkg/README" <<DOC
+${TERMUX_PKG_DESCRIPTION:-$pkg}
+
+Version  : $VERSION
+Homepage : ${TERMUX_PKG_HOMEPAGE:-https://github.com/djunekz/termux-app-store}
+License  : ${TERMUX_PKG_LICENSE:-unknown}
+
+Note: Binary not available for $ARCH architecture.
+DOC
+            fi
+
+            INSTALLED_SIZE=$(du -sk "$PKG_BUILD/data" 2>/dev/null | cut -f1 || echo "1")
+
+            cat > "$PKG_BUILD/DEBIAN/control" <<CTRL
+Package: $pkg
+Version: $VERSION
+Architecture: $DEB_ARCH
+Maintainer: ${TERMUX_PKG_MAINTAINER:-@termux-app-store}
+Installed-Size: $INSTALLED_SIZE
+Homepage: ${TERMUX_PKG_HOMEPAGE:-https://github.com/djunekz/termux-app-store}
+Description: ${TERMUX_PKG_DESCRIPTION:-Package from Termux App Store}
+CTRL
+            [ -n "${TERMUX_PKG_DEPENDS:-}" ] && \
+              echo "Depends: ${TERMUX_PKG_DEPENDS}" >> "$PKG_BUILD/DEBIAN/control"
+
+            DEB_OUT="output/${pkg}_${VERSION}_${DEB_ARCH}.deb"
+            if dpkg-deb --build "$PKG_BUILD" "$DEB_OUT" 2>/dev/null; then
+              SIZE=$(du -h "$DEB_OUT" | cut -f1)
+              echo "  OK: $(basename $DEB_OUT) ($SIZE)"
+            else
+              echo "  ERROR: dpkg-deb failed for $pkg ($ARCH)"
+            fi
+          done
+
+          echo ""
+          echo "Total .deb built for $ARCH: $(ls output/*.deb 2>/dev/null | wc -l)"
+
+      - name: Upload artifact for ${{ matrix.arch }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-${{ matrix.arch }}
+          path: output/*.deb
+          if-no-files-found: warn
+          retention-days: 7
+
+  publish-repo:
+    needs: build-debs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install tools
+        run: sudo apt-get install -y dpkg-dev
+
+      - name: Checkout source (to read packages/ metadata)
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: source
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - name: Initialize gh-pages if it does not exist
+        run: |
+          if [ ! -d "gh-pages/.git" ]; then
+            mkdir -p gh-pages
+            cd gh-pages
+            git init
+            git remote add origin \
+              "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+            git checkout --orphan gh-pages
+          fi
+          for arch in aarch64 arm x86_64 i686; do
+            mkdir -p "gh-pages/dists/termux/main/binary-${arch}"
+          done
+          mkdir -p gh-pages/pool/main
+
+      - name: Download all arch artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: debs-*
+          path: all-debs/
+          merge-multiple: true
+
+      - name: Copy .deb files to pool
+        run: |
+          cp all-debs/*.deb gh-pages/pool/main/ 2>/dev/null || true
+          echo "Files in pool/main:"
+          ls gh-pages/pool/main/
+
+      - name: Generate Packages index per architecture
+        run: |
+          cd gh-pages
+          for arch in aarch64 arm x86_64 i686; do
+            PKGDIR="dists/termux/main/binary-${arch}"
+            mkdir -p "$PKGDIR"
+
+            TMPPOOL="/tmp/pool_${arch}"
+            mkdir -p "$TMPPOOL"
+
+            for deb in pool/main/*.deb; do
+              [ -f "$deb" ] || continue
+              DEB_ARCH=$(dpkg-deb -f "$deb" Architecture 2>/dev/null || echo "all")
+              if [ "$DEB_ARCH" = "$arch" ] || [ "$DEB_ARCH" = "all" ]; then
+                cp "$deb" "$TMPPOOL/"
+              fi
+            done
+
+            if [ -n "$(ls $TMPPOOL/*.deb 2>/dev/null)" ]; then
+              dpkg-scanpackages "$TMPPOOL" /dev/null 2>/dev/null \
+                | sed "s|$TMPPOOL/|pool/main/|g" \
+                > "$PKGDIR/Packages"
+              gzip -k "$PKGDIR/Packages"
+              COUNT=$(grep -c "^Package:" "$PKGDIR/Packages" 2>/dev/null || echo 0)
+              echo "  [$arch] $COUNT packages indexed"
+            else
+              touch "$PKGDIR/Packages"
+              gzip -k "$PKGDIR/Packages"
+              echo "  [$arch] 0 packages"
+            fi
+            rm -rf "$TMPPOOL"
+          done
+
+      - name: Generate Release file
+        run: |
+          cd gh-pages
+          cat > dists/termux/Release <<RELEASE
+Origin: Termux App Store
+Label: Termux App Store
+Suite: termux
+Codename: termux
+Components: main
+Architectures: aarch64 arm x86_64 i686
+Description: Custom Termux repository by @djunekz
+Date: $(date -u "+%a, %d %b %Y %H:%M:%S UTC")
+RELEASE
+
+          cd dists/termux
+          for algo in MD5Sum SHA256; do
+            echo "$algo:" >> Release
+            for arch in aarch64 arm x86_64 i686; do
+              for f in "main/binary-${arch}/Packages" "main/binary-${arch}/Packages.gz"; do
+                [ -f "$f" ] || continue
+                SIZE=$(wc -c < "$f")
+                if [ "$algo" = "MD5Sum" ]; then
+                  HASH=$(md5sum "$f" | cut -d' ' -f1)
+                else
+                  HASH=$(sha256sum "$f" | cut -d' ' -f1)
+                fi
+                echo " $HASH $SIZE $f" >> Release
+              done
+            done
+          done
+
+      - name: Copy install-repo.py to gh-pages
+        run: |
+          cp source/install-repo.py gh-pages/install-repo.py
+
+      - name: Generate index.html
+        run: |
+          cd gh-pages
+          TOTAL=$(grep -c "^Package:" dists/termux/main/binary-aarch64/Packages 2>/dev/null || echo 0)
+
+          PKG_ROWS=""
+          for pkg_dir in ../source/packages/*/; do
+            pkg=$(basename "$pkg_dir")
+            unset TERMUX_PKG_VERSION TERMUX_PKG_DESCRIPTION TERMUX_PKG_HOMEPAGE \
+                  TERMUX_PKG_SRCURL TERMUX_PKG_SHA256 TERMUX_PKG_DEPENDS \
+                  TERMUX_PKG_LICENSE TERMUX_PKG_MAINTAINER 2>/dev/null || true
+            source "../source/${pkg_dir}/build.sh" 2>/dev/null || true
+            V="${TERMUX_PKG_VERSION:-}"
+            D="${TERMUX_PKG_DESCRIPTION:-}"
+            PKG_ROWS+="<tr><td>$pkg</td><td>${V}</td><td>${D}</td></tr>"
+          done
+
+          cat > index.html <<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Termux App Store · Repository</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Courier New',monospace;background:#0d1117;color:#c9d1d9;padding:24px 16px;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto}
+h1{color:#58a6ff;font-size:22px;margin-bottom:4px}
+.sub{color:#8b949e;font-size:13px;margin-bottom:24px}
+h2{color:#79c0ff;font-size:12px;font-weight:bold;margin:28px 0 8px;text-transform:uppercase;letter-spacing:.08em}
+pre{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;overflow-x:auto;font-size:13px}
+code{color:#7ee787}
+a{color:#58a6ff;text-decoration:none}
+a:hover{text-decoration:underline}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+th{text-align:left;padding:6px 12px;color:#8b949e;border-bottom:1px solid #21262d;font-weight:normal}
+td{padding:5px 12px;border-bottom:1px solid #161b22}
+td:first-child{color:#7ee787}
+td:nth-child(2){color:#e3b341;min-width:80px}
+td:nth-child(3){color:#8b949e}
+tr:hover td{background:#161b22}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
+.badge{background:#1f6feb22;color:#58a6ff;border:1px solid #1f6feb55;font-size:11px;padding:2px 10px;border-radius:12px}
+.badge.green{background:#23863622;color:#3fb950;border-color:#23863655}
+footer{margin-top:48px;color:#484f58;font-size:12px;border-top:1px solid #21262d;padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Termux App Store</h1>
+<p class="sub">by <a href="https://github.com/djunekz">@djunekz</a> &nbsp;·&nbsp;
+  <a href="https://github.com/djunekz/termux-app-store">GitHub</a></p>
+<div class="badges">
+  <span class="badge green">$TOTAL packages</span>
+  <span class="badge">aarch64</span>
+  <span class="badge">arm</span>
+  <span class="badge">x86_64</span>
+  <span class="badge">i686</span>
+</div>
+
+<h2>Quick Setup</h2>
+<pre><code># Automatic (recommended):
+curl -fsSL https://djunekz.github.io/termux-app-store/install-repo.py | python
+
+# Manual:
+echo "deb [trusted=yes] https://djunekz.github.io/termux-app-store termux main" \\
+  > \$PREFIX/etc/apt/sources.list.d/tas.list
+pkg update</code></pre>
+
+<h2>Install a package</h2>
+<pre><code>pkg install baxter
+pkg install aura</code></pre>
+
+<h2>Available packages ($TOTAL)</h2>
+<table>
+<thead><tr><th>Package</th><th>Version</th><th>Description</th></tr></thead>
+<tbody>$PKG_ROWS</tbody>
+</table>
+
+<h2>Repository links</h2>
+<pre><code>Packages (aarch64) : <a href="dists/termux/main/binary-aarch64/Packages">dists/termux/main/binary-aarch64/Packages</a>
+Packages (arm)     : <a href="dists/termux/main/binary-arm/Packages">dists/termux/main/binary-arm/Packages</a>
+Packages (x86_64)  : <a href="dists/termux/main/binary-x86_64/Packages">dists/termux/main/binary-x86_64/Packages</a>
+Packages (i686)    : <a href="dists/termux/main/binary-i686/Packages">dists/termux/main/binary-i686/Packages</a>
+Release            : <a href="dists/termux/Release">dists/termux/Release</a>
+Pool               : <a href="pool/main/">pool/main/</a></code></pre>
+
+<footer>Last updated: $(date -u "+%Y-%m-%d %H:%M UTC")</footer>
+</div>
+</body>
+</html>
+HTML
+
+      - name: Commit and push to gh-pages
+        run: |
+          cd gh-pages
+          git config user.email "258516621+termux-app-store@users.noreply.github.com"
+          git config user.name "Termux App Store"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            TOTAL=$(grep -c "^Package:" dists/termux/main/binary-aarch64/Packages 2>/dev/null || echo 0)
+            git commit -m "repo: $TOTAL pkgs, multi-arch [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
+            git push origin gh-pages
+          fi
+                         
