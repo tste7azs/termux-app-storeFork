@@ -14,6 +14,7 @@ and this project adheres to semantic versioning.
 
 ### Changed
 - Package `bashxt` v2.2 - Updated metadata
+- Package `cybertuz` v1.0.1 - Updated metadata
 
 ---
 
