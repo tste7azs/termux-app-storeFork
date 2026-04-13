@@ -11,6 +11,11 @@ SYMLINK="$BIN_DIR/$APP_NAME"
 TASCTL_SYMLINK="$BIN_DIR/$CTL_NAME"
 TASCTL_RAW="https://raw.githubusercontent.com/$REPO/master/tasctl"
 
+PKG_REPO_URL="https://djunekz.github.io/termux-app-store"
+PKG_REPO_ENTRY="deb [trusted=yes] ${PKG_REPO_URL} termux main"
+PKG_SOURCES_DIR="${PREFIX}/etc/apt/sources.list.d"
+PKG_SOURCES_FILE="${PKG_SOURCES_DIR}/tas.list"
+
 R=$'\033[0m'
 B=$'\033[1m'
 DIM=$'\033[2m'
@@ -104,6 +109,35 @@ create_wrapper() {
 
 
 
+add_pkg_repo() {
+  step "Adding apt repository..."
+  info "Entry : $PKG_REPO_ENTRY"
+  info "File  : $PKG_SOURCES_FILE"
+
+  mkdir -p "$PKG_SOURCES_DIR"
+
+  if [[ -f "$PKG_SOURCES_FILE" ]]; then
+    if grep -q "$PKG_REPO_URL" "$PKG_SOURCES_FILE" 2>/dev/null; then
+      ok "Repository already present: $PKG_SOURCES_FILE"
+      return 0
+    fi
+  fi
+
+  printf "# Termux App Store — https://github.com/%s\n%s\n" \
+    "$REPO" "$PKG_REPO_ENTRY" > "$PKG_SOURCES_FILE"
+  ok "Repository added: $PKG_SOURCES_FILE"
+}
+
+remove_pkg_repo() {
+  step "Removing apt repository..."
+  if [[ -f "$PKG_SOURCES_FILE" ]]; then
+    rm -f "$PKG_SOURCES_FILE"
+    ok "Removed: $PKG_SOURCES_FILE"
+  else
+    warn "Repository file not found: $PKG_SOURCES_FILE"
+  fi
+}
+
 install_app_source() {
   local mode="${1:-install}"
 
@@ -149,6 +183,8 @@ install_app_source() {
 
   rm -f "$INSTALL_DIR/$APP_NAME"
 
+  add_pkg_repo
+
   step "Detecting installed version..."
   local ver
   ver=$(grep -oP '__version__\s*=\s*"\K[0-9.]+' \
@@ -169,9 +205,10 @@ install_app_source() {
 
   printf "\n%s  ✔ %s v%s %sed successfully!%s\n" \
     "$GREEN$B" "$APP_NAME" "$ver" "$mode" "$R"
-  info "Run with : ${CYAN}$APP_NAME${R}"
-  info "Source at: ${DIM}$INSTALL_DIR${R}"
-  info "Update   : ${DIM}tasctl update${R}"
+  info "Run with  : ${CYAN}$APP_NAME${R}"
+  info "Source at : ${DIM}$INSTALL_DIR${R}"
+  info "Apt repo  : ${DIM}$PKG_REPO_URL${R}"
+  info "Update    : ${DIM}tasctl update${R}"
   printf "\n"
 }
 
@@ -195,6 +232,8 @@ uninstall_app() {
   step "Removing installation directory..."
   rm -rf "$INSTALL_DIR"
   ok "Removed: $INSTALL_DIR"
+
+  remove_pkg_repo
 
   printf "\n%s  ✔ %s uninstalled successfully.%s\n\n" "$GREEN$B" "$APP_NAME" "$R"
 }
@@ -342,6 +381,8 @@ usage() {
   printf "  %sinstall%s           Install Termux App Store (from source)\n" "$GREEN$B" "$R"
   printf "  %supdate%s            Update to latest version (from source)\n" "$GREEN$B" "$R"
   printf "  %suninstall%s         Remove Termux App Store\n" "$GREEN$B" "$R"
+  printf "  %sinstall-repo%s      Add pkg apt repository only\n" "$GREEN$B" "$R"
+  printf "  %suninstall-repo%s    Remove pkg apt repository only\n" "$GREEN$B" "$R"
   printf "  %sdoctor%s            Diagnose environment\n" "$GREEN$B" "$R"
   printf "  %sself-update%s       Update tasctl itself\n" "$GREEN$B" "$R"
   printf "  %shelp%s              Show this help\n" "$GREEN$B" "$R"
@@ -374,6 +415,22 @@ case "$cmd" in
     ;;
   uninstall)
     uninstall_app
+    ;;
+  install-repo)
+    banner
+    header "Add Repository"
+    add_pkg_repo
+    step "Running pkg update..."
+    pkg update || warn "pkg update failed — run manually: pkg update"
+    printf "\n%s  ✔ Repository added. Run: pkg install <package>%s\n\n" "$GREEN$B" "$R"
+    ;;
+  uninstall-repo)
+    banner
+    header "Remove Repository"
+    remove_pkg_repo
+    step "Running pkg update..."
+    pkg update || warn "pkg update failed — run manually: pkg update"
+    printf "\n%s  ✔ Repository removed.%s\n\n" "$GREEN$B" "$R"
     ;;
   doctor)
     cmd_doctor
