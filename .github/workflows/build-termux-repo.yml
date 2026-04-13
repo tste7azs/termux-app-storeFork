@@ -94,11 +94,13 @@ jobs:
 
                   case "$FNAME" in
                     *.tar.gz|*.tgz)
-                      tar -xzf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
+                      tar -xzf "$TMPFILE" -C "$TMPEXT" 2>/dev/null ||                         tar -xf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
                     *.tar.xz)
-                      tar -xJf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
+                      tar -xJf "$TMPFILE" -C "$TMPEXT" 2>/dev/null ||                         tar -xf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
                     *.tar.bz2)
-                      tar -xjf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
+                      tar -xjf "$TMPFILE" -C "$TMPEXT" 2>/dev/null ||                         tar -xf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
+                    *.tar)
+                      tar -xf "$TMPFILE" -C "$TMPEXT" 2>/dev/null || true ;;
                     *.zip)
                       unzip -q "$TMPFILE" -d "$TMPEXT" 2>/dev/null || true ;;
                     *.deb)
@@ -177,6 +179,15 @@ jobs:
                       cp "$BIN" "$INSTALL_DIR/bin/$pkg"
                       chmod +x "$INSTALL_DIR/bin/$pkg"
                       echo "  Installed from archive: $(basename $BIN)"
+
+                      COMPANIONS=$(find "$TMPEXT" -maxdepth 4 -type f ! -name "$(basename $BIN)"                         \( -name "*.py" -o -name "*.sh" -o -name "*.conf" -o -name "*.json" \) 2>/dev/null)
+                      if [ -n "$COMPANIONS" ]; then
+                        mkdir -p "$INSTALL_DIR/share/$pkg"
+                        for cf in $COMPANIONS; do
+                          cp "$cf" "$INSTALL_DIR/share/$pkg/"
+                          echo "  Companion file: $(basename $cf) -> share/$pkg/"
+                        done
+                      fi
                     fi
                   fi
 
@@ -280,6 +291,7 @@ jobs:
       - name: Generate Packages index per architecture
         run: |
           cd gh-pages
+          # Generate full Packages index from pool/main/ with correct relative paths
           FULL_PKG="/tmp/Packages_all"
           if ls pool/main/*.deb >/dev/null 2>&1; then
             dpkg-scanpackages pool/main /dev/null 2>/dev/null \
@@ -293,6 +305,7 @@ jobs:
             PKGDIR="dists/termux/main/binary-${arch}"
             mkdir -p "$PKGDIR"
 
+            # Extract packages matching this arch or "all" from the full index
             awk -v arch="$arch" '
               /^$/ { if (keep) { printf "%s\n", block; } block=""; keep=0; next }
               /^Architecture:/ {
