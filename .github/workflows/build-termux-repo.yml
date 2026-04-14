@@ -56,10 +56,7 @@ jobs:
             VERSION="${TERMUX_PKG_VERSION:-1.0.0}"
 
             SRCURL="${TERMUX_PKG_SRCURL:-}"
-            SRCURL="${SRCURL//\$\{TERMUX_PKG_VERSION\}/$VERSION}"
-            SRCURL="${SRCURL//\${TERMUX_PKG_VERSION}/$VERSION}"
-            SRCURL="${SRCURL//\{\$TERMUX_PKG_VERSION\}/$VERSION}"
-            SRCURL="${SRCURL//{\$TERMUX_PKG_VERSION}/$VERSION}"
+            SRCURL=$(echo "$SRCURL" | sed "s/\${TERMUX_PKG_VERSION}/$VERSION/g; s/{\$TERMUX_PKG_VERSION}/$VERSION/g")
 
             PKG_BUILD="build_tmp/${pkg}_${ARCH}"
             INSTALL_DIR="$PKG_BUILD/data/data/com.termux/files/usr"
@@ -143,6 +140,7 @@ jobs:
                   if [ -d "$TMPEXT" ] && [ -z "$(ls -A $INSTALL_DIR/bin/ 2>/dev/null)" ]; then
                     BIN=""
 
+                    # Priority 1: exact name match (binary or script)
                     for candidate in $(find "$TMPEXT" -maxdepth 4 -type f                         \( -name "$pkg" -o -name "${pkg}.sh" -o -name "${pkg}.py"                            -o -name "${pkg}-${ARCH}" \) 2>/dev/null); do
                       CTYPE=$(file -b "$candidate" | tr '[:upper:]' '[:lower:]')
                       if echo "$CTYPE" | grep -q "elf"; then
