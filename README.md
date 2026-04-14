@@ -4,7 +4,9 @@
 
 <br/>
 
-# Termux App Store
+<H1>
+  <a href link="https://djunekz.github.io/termux-app-store/">Termux App Store</a>
+</H1>
 
 **The first offline-first, source-based TUI package manager built natively for Termux.**
 
