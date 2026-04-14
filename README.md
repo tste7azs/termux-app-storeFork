@@ -109,6 +109,14 @@ pip install termux-app-store
 ```
 
 ### Option 2 (Manual)
+> Simple (Recommended for not download high memory)
+```bash
+curl -fsSL https://raw.githubusercontent.com/djunekz/termux-app-store/master/tasctl | bash -s install
+```
+
+or
+
+> With git clone (For download full files repository)
 ```bash
 git clone https://github.com/djunekz/termux-app-store
 cd termux-app-store
@@ -123,7 +131,7 @@ cd termux-app-store
 ./tasctl install
 ```
 
-Then run:
+After download and install then run:
 
 ```bash
 termux-app-store        # Open interactive TUI
