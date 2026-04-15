@@ -61,7 +61,7 @@ jobs:
             SRCURL="${TERMUX_PKG_SRCURL:-}"
             if [ -z "$SRCURL" ] || echo "$SRCURL" | grep -qE '\{|\$\{'; then
               RAW=$(grep 'TERMUX_PKG_SRCURL' "$BUILD_SH" | head -1 \
-                | sed "s/.*TERMUX_PKG_SRCURL[[:space:]]*=[[:space:]]*//") \
+                | sed "s/.*TERMUX_PKG_SRCURL[[:space:]]*=[[:space:]]*//" \
                 | tr -d '"' | tr -d "'")
               SRCURL=$(echo "$RAW" \
                 | sed "s|\\\${TERMUX_PKG_VERSION}|$VERSION|g" \
@@ -230,7 +230,7 @@ jobs:
                 if declare -f termux_step_make_install > /dev/null 2>&1; then
                   termux_step_make_install 2>&1 | sed 's/^/    /'
                 fi
-                RUNNER_EOF
+RUNNER_EOF
 
                 STEP_RESULT=0
                 TERMUX_PREFIX="$TERMUX_PREFIX" \
