@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-15T02:48:09.911840+00:00",
+  "generated_at": "2026-04-15T20:26:27.436593+00:00",
   "total": 25,
   "packages": [
     {
@@ -115,7 +115,7 @@
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/djunekz/cybertuz/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz",
       "sha256": "de6f948ecfe97e875bdbabe2073671da29a8521de465ad6a577476749a9fef59",
-      "platform_independent": false,
+      "platform_independent": true,
       "depends": [
         "nmap",
         "python",
@@ -164,7 +164,10 @@
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/impulse.tar.gz",
       "sha256": "d03e1a4c74a09b63900ffd1bc889bbc8f5720b83914b1a2fdd5453fb23a63c18",
-      "platform_independent": false
+      "platform_independent": true,
+      "depends": [
+        "python"
+      ]
     },
     {
       "package": "infoooze",
@@ -233,7 +236,7 @@
     {
       "package": "pymaker",
       "version": "1.0.0",
-      "maintainer": "@droidv1",
+      "maintainer": "@termux-app-store",
       "description": "Simple tool for create python script",
       "homepage": "https://github.com/droidv1/pymaker",
       "license": "MIT",
@@ -242,7 +245,10 @@
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/pymaker-${TERMUX_PKG_VERSION}.tar.gz",
       "sha256": "2fe03f6839e7b550f888d477628b852d648ea4ed688643122d3c182d495564e4",
-      "platform_independent": false
+      "platform_independent": true,
+      "depends": [
+        "python"
+      ]
     },
     {
       "package": "sigit",
