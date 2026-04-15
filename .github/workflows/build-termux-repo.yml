@@ -54,18 +54,18 @@ jobs:
             unset TERMUX_PKG_MAINTAINER TERMUX_PKG_DEPENDS TERMUX_PKG_BUILD_IN_SRC
             unset TERMUX_PKG_PLATFORM_INDEPENDENT TERMUX_PKG_ENTRYPOINT
 
+            export TERMUX_ARCH="$ARCH"
             eval "$(grep '^TERMUX_PKG_' "$BUILD_SH" 2>/dev/null || true)"
             VERSION="${TERMUX_PKG_VERSION:-1.0.0}"
 
             SRCURL="${TERMUX_PKG_SRCURL:-}"
             if [ -z "$SRCURL" ] || echo "$SRCURL" | grep -qE '\{|\$\{'; then
               RAW=$(grep 'TERMUX_PKG_SRCURL' "$BUILD_SH" | head -1 \
-                | sed "s/.*TERMUX_PKG_SRCURL[[:space:]]*=[[:space:]]*//" \
+                | sed "s/.*TERMUX_PKG_SRCURL[[:space:]]*=[[:space:]]*//") \
                 | tr -d '"' | tr -d "'")
               SRCURL=$(echo "$RAW" \
                 | sed "s|\\\${TERMUX_PKG_VERSION}|$VERSION|g" \
-                | sed "s|{\$TERMUX_PKG_VERSION}|$VERSION|g" \
-                | sed "s|{$VERSION}|$VERSION|g")
+                | sed "s|{\$TERMUX_PKG_VERSION}|$VERSION|g")
             fi
 
             case "$ARCH" in
@@ -195,7 +195,7 @@ jobs:
                           echo "  SKIP: ELF arch=$ELF_ARCH != $ARCH — skipping binary, no .deb"
                           rm -f "$TMPFILE"
                           DOWNLOAD_SUCCESS=false
-                          continue 2>/dev/null || true
+                          continue
                         fi
                       else
                         cp "$TMPFILE" "$TERMUX_PREFIX/bin/$pkg"
@@ -219,28 +219,44 @@ jobs:
               else
                 echo "  Running termux_step_make_install()..."
 
+                cat > /tmp/_tas_runner.sh << 'RUNNER_EOF'
+set +e
+npm() {
+  if [ "$1" = "install" ] || [ "$1" = "ci" ]; then
+    echo "    [CI] npm $@ skipped (will run on-device)"
+    return 0
+  fi
+  command npm "$@"
+}
+export -f npm
+
+pip() {
+  if [ "$1" = "install" ]; then
+    shift
+    command pip install "$@" \
+      --target="${TERMUX_PREFIX}/lib/python3/dist-packages" \
+      --no-deps --quiet 2>/dev/null || \
+    command pip install "$@" --quiet 2>/dev/null || true
+    return 0
+  fi
+  command pip "$@"
+}
+export -f pip
+
+source "$BUILD_SH" 2>/dev/null || true
+
+if declare -f termux_step_make_install > /dev/null 2>&1; then
+  termux_step_make_install 2>&1 | sed 's/^/    /'
+fi
+RUNNER_EOF
+
                 STEP_RESULT=0
-                (
-                  set +e
-                  export TERMUX_PREFIX
-                  export TERMUX_PKG_SRCDIR
-                  export TERMUX_PKG_VERSION="$VERSION"
-
-                  npm() {
-                    if [ "$1" = "install" ] || [ "$1" = "ci" ]; then
-                      echo "    [CI] npm $* skipped (native modules would be wrong arch)"
-                      return 0
-                    fi
-                    command npm "$@"
-                  }
-                  export -f npm
-
-                  source "$BUILD_SH" 2>/dev/null || true
-
-                  if declare -f termux_step_make_install > /dev/null 2>&1; then
-                    termux_step_make_install 2>&1 | sed 's/^/    /'
-                  fi
-                ) || STEP_RESULT=$?
+                TERMUX_PREFIX="$TERMUX_PREFIX" \
+                TERMUX_PKG_SRCDIR="$TERMUX_PKG_SRCDIR" \
+                TERMUX_PKG_VERSION="$VERSION" \
+                TERMUX_ARCH="$ARCH" \
+                BUILD_SH="$BUILD_SH" \
+                bash /tmp/_tas_runner.sh || STEP_RESULT=$?
 
                 if [ -f "$TERMUX_PREFIX/bin/$pkg" ]; then
                   HAS_BINARY=true
@@ -374,7 +390,9 @@ jobs:
             PKG_LICENSE="${TERMUX_PKG_LICENSE:-unknown}"
             PKG_MAINTAINER="${TERMUX_PKG_MAINTAINER:-@termux-app-store}"
             PKG_DEPENDS="${TERMUX_PKG_DEPENDS:-}"
-            PKG_DEPENDS=$(echo "$PKG_DEPENDS" |               sed 's/binutils-is-llvm[^,]*,\?//g; s/,\s*,/,/g; s/^,\|,$//g' |               sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+            PKG_DEPENDS=$(echo "$PKG_DEPENDS" | \
+              sed 's/binutils-is-llvm[^,]*,\?//g; s/,\s*,/,/g; s/^,\|,$//g' | \
+              sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
 
             INSTALLED_SIZE=$(du -sk "$PKG_BUILD/data" 2>/dev/null | cut -f1 || echo "1")
 
