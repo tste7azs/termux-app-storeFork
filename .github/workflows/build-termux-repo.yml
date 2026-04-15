@@ -221,7 +221,7 @@ jobs:
 
                 cat > /tmp/_tas_runner.sh << 'RUNNER_EOF'
 set +e
-npm() {
+npm () {
   if [ "$1" = "install" ] || [ "$1" = "ci" ]; then
     echo "    [CI] npm $@ skipped (will run on-device)"
     return 0
