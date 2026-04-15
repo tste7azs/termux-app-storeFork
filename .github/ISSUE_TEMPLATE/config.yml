@@ -1,17 +1,14 @@
 blank_issues_enabled: false
+
 contact_links:
-  - name: 💬 Diskusi / Tanya Umum
+  - name: 💬 Discussions / General Questions
     url: https://github.com/djunekz/termux-app-store/discussions
-    about: Gunakan Discussions untuk pertanyaan umum atau diskusi non-bug.
+    about: Use Discussions for general questions, ideas, or non-bug topics.
 
-  - name: 🐞 Bug Report
-    url: .github/ISSUE_TEMPLATE/bug_report.yml
-    about: Laporkan bug atau error di Termux App Store dengan lengkap
+  - name: 📖 Documentation / Guides
+    url: https://github.com/djunekz/termux-app-store/wiki
+    about: Read the documentation, installation guide, and usage instructions.
 
-  - name: ✨ Feature Request
-    url: .github/ISSUE_TEMPLATE/feature_request.yml
-    about: Ajukan ide atau fitur baru untuk Termux App Store
-
-  - name: 🆘 Support / Help Request
-    url: .github/ISSUE_TEMPLATE/support_request.yml
-    about: Ajukan pertanyaan atau minta bantuan terkait Termux App Store
+  - name: 🆘 Support / Help / Q & A Discussion
+    url: https://github.com/djunekz/termux-app-store/discussions/categories/q-a
+    about: Ask for help or troubleshooting support related to Termux App Store.
