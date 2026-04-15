@@ -1,31 +1,31 @@
-# 🐞 Laporan Bug / Bug Report
+# 🐞 Bug Report
 
-Gunakan template ini untuk melaporkan bug atau error pada Termux App Store. Mohon isi semua field dengan jelas agar tim dapat menindaklanjuti dengan cepat.
+Use this template to report bugs or issues in Termux App Store. Please fill in all fields clearly so the team can investigate and resolve the issue quickly.
 
-Sebelum membuat laporan bug, silakan baca dulu **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** dan pertimbangkan untuk memeriksa **[FAQ.md](./FAQ.md)**. Jika ingin berdiskusi, gunakan **[GitHub Discussions](https://github.com/djunekz/termux-app-store/discussions)**.
+Before submitting a bug report, please read **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** and check **[FAQ.md](./FAQ.md)**. If you want to discuss something, use **[GitHub Discussions](https://github.com/djunekz/termux-app-store/discussions)**.
 
 ---
 
-**Nama / Username:**  
-Misal: @djunekz
+**Name / Username:**  
+Example: @djunekz
 
-**Versi Termux App Store:**  
-Misal: 1.0.3 / versi binary / versi py
+**Termux App Store Version:**  
+Example: 1.0.3 / binary version / Python version
 
-**Lingkungan / OS:**  
-Misal: Termux Android 12, aarch64
+**Environment / OS:**  
+Example: Termux Android 12, aarch64
 
-**Deskripsi Bug:**  
-Tuliskan bug atau error secara rinci. Sertakan langkah-langkah untuk mereproduksi, pesan error, atau perilaku yang tidak sesuai harapan.
+**Bug Description:**  
+Describe the bug or issue in detail. Include error messages, unexpected behavior, and what you expected to happen.
 
-**Langkah Reproduksi:**  
-Jika ada, tuliskan langkah-langkah untuk mereproduksi bug.
+**Steps to Reproduce:**  
+If applicable, provide step-by-step instructions to reproduce the issue.
 
-**Screenshot / Output Terminal (Opsional):**  
-Tambahkan screenshot atau log terminal jika relevan.
+**Screenshot / Terminal Output (Optional):**  
+Add screenshots or terminal logs if relevant.
 
-**Prioritas / Tingkat Urgensi:**  
-Misal: Tinggi / Sedang / Rendah
+**Priority / Severity:**  
+Example: High / Medium / Low
 
-**Catatan Tambahan (Opsional):**  
-Informasi tambahan yang dapat membantu tim menindaklanjuti bug.
+**Additional Notes (Optional):**  
+Any extra information that may help the team understand or fix the issue.
