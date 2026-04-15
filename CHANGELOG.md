@@ -16,6 +16,9 @@ and this project adheres to semantic versioning.
 - Package `bashxt` v2.2 - Updated metadata
 - Package `cybertuz` v1.0.1 - Updated metadata
 
+### Update
+- Package `aura` v0.8.2 → v0.10.0
+
 ---
 
 ## [v0.2.4] - 2026-04-07
