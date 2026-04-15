@@ -53,7 +53,6 @@ _INSTALL_DIR = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr"))
 
 
 def _is_pip_mode() -> bool:
-    """Return True jika dijalankan dari instalasi pip (bukan install.sh)."""
     try:
         import importlib.util
         spec = importlib.util.find_spec("termux_app_store")
@@ -448,11 +447,11 @@ def cmd_show(packages_dir: Path, name: str):
 """)
 
 
-def ensure_package_files(packages_dir: Path, name: str) -> bool:
+def ensure_package_files(packages_dir: Path, name: str, force_update: bool = False) -> bool:
     pkg_dir = packages_dir / name
     build_sh = pkg_dir / "build.sh"
 
-    if build_sh.exists():
+    if build_sh.exists() and not force_update:
         return True
 
     url = (
@@ -471,7 +470,7 @@ def ensure_package_files(packages_dir: Path, name: str) -> bool:
     return False
 
 
-def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False) -> bool:
+def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False, force_update: bool = False) -> bool:
     pkgs = load_all_packages(packages_dir)
     p = next((x for x in pkgs if x["name"] == name), None)
 
@@ -488,13 +487,9 @@ def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = Fa
 
     print(f"\n{B}[*] Installing {CYAN}{name}{R}{B} v{p['version']}...{R}\n")
 
-    if not ensure_package_files(packages_dir, name):
+    if not ensure_package_files(packages_dir, name, force_update=force_update):
         print(f"{RED}[✗] Failed to download build files for '{name}'.{R}")
         print(f"    Check your internet connection or try again later.")
-        return False
-
-    if not ensure_build_package_sh(app_root):
-        print(f"{RED}[✗] Cannot proceed without build-package.sh.{R}")
         return False
 
     if not ensure_build_package_sh(app_root):
@@ -652,7 +647,7 @@ def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
         if status == "INSTALLED":
             print(f"{GREEN}[✔] '{target}' is already up-to-date ({p['version']}).{R}")
             return
-        cmd_install(app_root, packages_dir, target, silent=True)
+        cmd_install(app_root, packages_dir, target, silent=True, force_update=True)
         return
 
     to_upgrade = []
@@ -674,7 +669,7 @@ def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
     ok = 0
     fail = 0
     for p in to_upgrade:
-        success = cmd_install(app_root, packages_dir, p["name"], silent=True)
+        success = cmd_install(app_root, packages_dir, p["name"], silent=True, force_update=True)
         if success:
             ok += 1
         else:
