@@ -219,18 +219,8 @@ jobs:
               else
                 echo "  Running termux_step_make_install()..."
 
-                cat > /tmp/_tas_runner.sh << 'RUNNER_EOF'
-                set +e
-                shopt -s expand_aliases
-                alias npm='bash -lc '\''if [ "$1" = "install" ] || [ "$1" = "ci" ]; then echo "    [CI] npm $* skipped (will run on-device)"; exit 0; fi; command npm "$@"'\'' _'
-                alias pip='bash -lc '\''if [ "$1" = "install" ]; then shift; command pip install "$@" --target="${TERMUX_PREFIX}/lib/python3/dist-packages" --no-deps --quiet 2>/dev/null || command pip install "$@" --target="${TERMUX_PREFIX}/lib/python3/dist-packages" --no-deps --quiet; exit 0; fi; command pip "$@"'\'' _'
-
-                source "$BUILD_SH" 2>/dev/null || true
-
-                if declare -f termux_step_make_install > /dev/null 2>&1; then
-                  termux_step_make_install 2>&1 | sed 's/^/    /'
-                fi
-RUNNER_EOF
+                echo "c2V0ICtlCnNob3B0IC1zIGV4cGFuZF9hbGlhc2VzCgpfbnBtX3dyYXBwZXIoKSB7CiAgaWYgWyAiJDEiID0gImluc3RhbGwiIF0gfHwgWyAiJDEiID0gImNpIiBdOyB0aGVuCiAgICBlY2hvICIgICAgW0NJXSBucG0gJCogc2tpcHBlZCAod2lsbCBydW4gb24tZGV2aWNlKSIKICAgIHJldHVybiAwCiAgZmkKICBjb21tYW5kIG5wbSAiJEAiCn0KYWxpYXMgbnBtPSdfbnBtX3dyYXBwZXInCgpfcGlwX3dyYXBwZXIoKSB7CiAgaWYgWyAiJDEiID0gImluc3RhbGwiIF07IHRoZW4KICAgIHNoaWZ0CiAgICBjb21tYW5kIHBpcCBpbnN0YWxsICIkQCIgLS10YXJnZXQ9IiR7VEVSTVVYX1BSRUZJWH0vbGliL3B5dGhvbjMvZGlzdC1wYWNrYWdlcyIgLS1uby1kZXBzIC0tcXVpZXQgMj4vZGV2L251bGwgXAogICAgICB8fCBjb21tYW5kIHBpcCBpbnN0YWxsICIkQCIgLS10YXJnZXQ9IiR7VEVSTVVYX1BSRUZJWH0vbGliL3B5dGhvbjMvZGlzdC1wYWNrYWdlcyIgLS1uby1kZXBzIC0tcXVpZXQKICAgIHJldHVybiAwCiAgZmkKICBjb21tYW5kIHBpcCAiJEAiCn0KYWxpYXMgcGlwPSdfcGlwX3dyYXBwZXInCgpzb3VyY2UgIiRCVUlMRF9TSCIgMj4vZGV2L251bGwgfHwgdHJ1ZQoKaWYgZGVjbGFyZSAtZiB0ZXJtdXhfc3RlcF9tYWtlX2luc3RhbGwgPiAvZGV2L251bGwgMj4mMTsgdGhlbgogIHRlcm11eF9zdGVwX21ha2VfaW5zdGFsbCAyPiYxIHwgc2VkICdzL14vICAgIC8nCmZpCg==" \
+                  | base64 -d > /tmp/_tas_runner.sh
 
                 STEP_RESULT=0
                 TERMUX_PREFIX="$TERMUX_PREFIX" \
