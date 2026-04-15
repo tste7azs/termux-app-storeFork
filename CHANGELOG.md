@@ -15,6 +15,8 @@ and this project adheres to semantic versioning.
 ### Changed
 - Package `bashxt` v2.2 - Updated metadata
 - Package `cybertuz` v1.0.1 - Updated metadata
+- Package `impulse` v1.0.0 - Updated metadata
+- Package `pymaker` v1.0.0 - Updated metadata
 
 ### Update
 - Package `aura` v0.8.2 → v0.10.0
