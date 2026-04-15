@@ -30,7 +30,7 @@ jobs:
             deb_arch: i686
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install build tools
         run: |
@@ -226,6 +226,15 @@ jobs:
                   export TERMUX_PKG_SRCDIR
                   export TERMUX_PKG_VERSION="$VERSION"
 
+                  npm() {
+                    if [ "$1" = "install" ] || [ "$1" = "ci" ]; then
+                      echo "    [CI] npm $* skipped (native modules would be wrong arch)"
+                      return 0
+                    fi
+                    command npm "$@"
+                  }
+                  export -f npm
+
                   source "$BUILD_SH" 2>/dev/null || true
 
                   if declare -f termux_step_make_install > /dev/null 2>&1; then
@@ -395,7 +404,7 @@ jobs:
           echo "Total .deb built for $ARCH: $(ls output/*.deb 2>/dev/null | wc -l)"
 
       - name: Upload artifact for ${{ matrix.arch }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: debs-${{ matrix.arch }}
           path: output/*.deb
@@ -410,13 +419,13 @@ jobs:
         run: sudo apt-get install -y dpkg-dev
 
       - name: Checkout source (to read packages/ metadata)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           ref: master
           path: source
 
       - name: Checkout gh-pages branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: gh-pages
@@ -438,7 +447,7 @@ jobs:
           mkdir -p gh-pages/pool/main
 
       - name: Download all arch artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           pattern: debs-*
           path: all-debs/
