@@ -30,12 +30,12 @@ jobs:
             deb_arch: i686
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install build tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y dpkg-dev wget file unzip npm nodejs python3 python3-pip
+          sudo apt-get install -y dpkg-dev wget file unzip npm nodejs python3 python3-pip make
 
       - name: Build .deb packages for arch=${{ matrix.arch }}
         run: |
@@ -43,328 +43,310 @@ jobs:
           DEB_ARCH="${{ matrix.deb_arch }}"
           mkdir -p output build_tmp
 
+          case "$ARCH" in
+            aarch64) MUSL_TRIPLE="aarch64-unknown-linux-musl"  ; GO_TRIPLE="Linux_arm64"  ; GO_TRIPLE2="linux_arm64"  ;;
+            arm)     MUSL_TRIPLE="arm-unknown-linux-musleabihf"; GO_TRIPLE="Linux_armv7"  ; GO_TRIPLE2="linux_armv7"  ;;
+            x86_64)  MUSL_TRIPLE="x86_64-unknown-linux-musl"   ; GO_TRIPLE="Linux_x86_64" ; GO_TRIPLE2="linux_amd64"  ;;
+            i686)    MUSL_TRIPLE="i686-unknown-linux-musl"      ; GO_TRIPLE="Linux_i386"   ; GO_TRIPLE2="linux_386"    ;;
+          esac
+
+          resolve_srcurl() {
+            local url="$1"
+            url=$(echo "$url" \
+              | sed "s|aarch64-unknown-linux-musl|$MUSL_TRIPLE|g" \
+              | sed "s|arm-unknown-linux-musleabihf|$MUSL_TRIPLE|g" \
+              | sed "s|x86_64-unknown-linux-musl|$MUSL_TRIPLE|g" \
+              | sed "s|i686-unknown-linux-musl|$MUSL_TRIPLE|g" \
+              | sed "s|Linux_arm64|$GO_TRIPLE|g" \
+              | sed "s|Linux_armv7|$GO_TRIPLE|g" \
+              | sed "s|Linux_x86_64|$GO_TRIPLE|g" \
+              | sed "s|Linux_i386|$GO_TRIPLE|g" \
+              | sed "s|linux_arm64|$GO_TRIPLE2|g" \
+              | sed "s|linux_amd64|$GO_TRIPLE2|g" \
+              | sed "s|linux_386|$GO_TRIPLE2|g")
+            echo "$url"
+          }
+
+          elf_arch_ok() {
+            local ft
+            ft=$(file -b "$1" | tr '[:upper:]' '[:lower:]')
+            echo "$ft" | grep -q "elf" || return 0
+            local ea=""
+            case "$ft" in
+              *aarch64*|*arm64*)     ea="aarch64" ;;
+              *arm*|*eabi*)          ea="arm"     ;;
+              *x86-64*|*x86_64*)    ea="x86_64"  ;;
+              *80386*|*i386*|*i686*) ea="i686"   ;;
+            esac
+            [ -z "$ea" ] || [ "$ea" = "$ARCH" ]
+          }
+
+          extract_archive() {
+            local file="$1" dest="$2"
+            local fname
+            fname=$(basename "$file" | cut -d'?' -f1)
+            case "$fname" in
+              *.tar.gz|*.tgz) tar -xzf "$file" -C "$dest" 2>/dev/null || tar -xf "$file" -C "$dest" 2>/dev/null || true ;;
+              *.tar.xz)       tar -xJf "$file" -C "$dest" 2>/dev/null || tar -xf "$file" -C "$dest" 2>/dev/null || true ;;
+              *.tar.bz2)      tar -xjf "$file" -C "$dest" 2>/dev/null || tar -xf "$file" -C "$dest" 2>/dev/null || true ;;
+              *.tar)          tar -xf  "$file" -C "$dest" 2>/dev/null || true ;;
+              *.zip)          unzip -q "$file" -d "$dest" 2>/dev/null || true ;;
+              *)              tar -xzf "$file" -C "$dest" 2>/dev/null || tar -xf "$file" -C "$dest" 2>/dev/null || true ;;
+            esac
+            local inner
+            inner=$(find "$dest" -mindepth 1 -maxdepth 1 -type d | head -1)
+            [ -n "$inner" ] && echo "$inner" || echo "$dest"
+          }
+
+          find_entrypoint() {
+            local srcdir="$1" pkg="$2" bin=""
+            for ext in "" ".sh" ".py" ".js" "-${ARCH}"; do
+              local f="$srcdir/${pkg}${ext}"
+              [ -f "$f" ] && elf_arch_ok "$f" && { bin="$f"; break; }
+            done
+            if [ -z "$bin" ]; then
+              for name in main.sh main.py main.js index.js "${pkg}.sh" "${pkg}.py" "${pkg}.js"; do
+                local f
+                f=$(find "$srcdir" -maxdepth 3 -name "$name" -type f 2>/dev/null | head -1)
+                [ -n "$f" ] && elf_arch_ok "$f" && { bin="$f"; break; }
+              done
+            fi
+            if [ -z "$bin" ]; then
+              while IFS= read -r f; do
+                elf_arch_ok "$f" && { bin="$f"; break; }
+              done < <(find "$srcdir" -maxdepth 4 -type f -perm /111 2>/dev/null)
+            fi
+            echo "$bin"
+          }
+
+          install_entrypoint() {
+            local bin="$1" pkg="$2" prefix="$3" srcdir="$4"
+            local ft
+            ft=$(file -b "$bin" | tr '[:upper:]' '[:lower:]')
+            if echo "$ft" | grep -q "elf"; then
+              cp "$bin" "$prefix/bin/$pkg"
+              chmod +x "$prefix/bin/$pkg"
+              echo "  → ELF binary installed"
+            else
+              local sharedir="$prefix/share/$pkg"
+              mkdir -p "$sharedir"
+              cp -r "$srcdir"/. "$sharedir/" 2>/dev/null || true
+              local relpath="${bin#$srcdir/}"
+              local wrapper="$prefix/bin/$pkg"
+              case "$(basename "$bin")" in
+                *.py)
+                  printf '#!/data/data/com.termux/files/usr/bin/bash\n' > "$wrapper"
+                  printf 'cd "/data/data/com.termux/files/usr/share/%s"\n' "$pkg" >> "$wrapper"
+                  printf 'exec python "%s" "$@"\n' "$relpath" >> "$wrapper"
+                  ;;
+                *.js)
+                  printf '#!/data/data/com.termux/files/usr/bin/bash\n' > "$wrapper"
+                  printf 'exec node "/data/data/com.termux/files/usr/share/%s/%s" "$@"\n' "$pkg" "$relpath" >> "$wrapper"
+                  ;;
+                *)
+                  printf '#!/data/data/com.termux/files/usr/bin/bash\n' > "$wrapper"
+                  printf 'cd "/data/data/com.termux/files/usr/share/%s"\n' "$pkg" >> "$wrapper"
+                  printf 'exec bash "%s" "$@"\n' "$relpath" >> "$wrapper"
+                  ;;
+              esac
+              chmod +x "$wrapper"
+              echo "  → Script wrapper installed → share/$pkg/$relpath"
+            fi
+          }
+
           for pkg_dir in packages/*/; do
             pkg=$(basename "$pkg_dir")
             BUILD_SH="$pkg_dir/build.sh"
             [ -f "$BUILD_SH" ] || continue
-            echo "──── [$ARCH] Building: $pkg"
+
+            echo ""
+            echo "════ [$ARCH] $pkg ════"
 
             unset TERMUX_PKG_VERSION TERMUX_PKG_SRCURL TERMUX_PKG_SHA256
             unset TERMUX_PKG_DESCRIPTION TERMUX_PKG_HOMEPAGE TERMUX_PKG_LICENSE
             unset TERMUX_PKG_MAINTAINER TERMUX_PKG_DEPENDS TERMUX_PKG_BUILD_IN_SRC
             unset TERMUX_PKG_PLATFORM_INDEPENDENT TERMUX_PKG_ENTRYPOINT
 
-            export TERMUX_ARCH="$ARCH"
             eval "$(grep '^TERMUX_PKG_' "$BUILD_SH" 2>/dev/null || true)"
             VERSION="${TERMUX_PKG_VERSION:-1.0.0}"
 
-            SRCURL="${TERMUX_PKG_SRCURL:-}"
-            if [ -z "$SRCURL" ] || echo "$SRCURL" | grep -qE '\{|\$\{'; then
-              RAW=$(grep 'TERMUX_PKG_SRCURL' "$BUILD_SH" | head -1 \
-                | sed "s/.*TERMUX_PKG_SRCURL[[:space:]]*=[[:space:]]*//" \
-                | tr -d '"' | tr -d "'")
-              SRCURL=$(echo "$RAW" \
-                | sed "s|\\\${TERMUX_PKG_VERSION}|$VERSION|g" \
-                | sed "s|{\$TERMUX_PKG_VERSION}|$VERSION|g")
-            fi
-
-            case "$ARCH" in
-              aarch64)
-                SRCURL=$(echo "$SRCURL" \
-                  | sed 's|x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|g' \
-                  | sed 's|i686-unknown-linux-musl|aarch64-unknown-linux-musl|g' \
-                  | sed 's|Linux_x86_64|Linux_arm64|g' \
-                  | sed 's|Linux_i386|Linux_arm64|g')
-                ;;
-              arm)
-                SRCURL=$(echo "$SRCURL" \
-                  | sed 's|aarch64-unknown-linux-musl|arm-unknown-linux-musleabihf|g' \
-                  | sed 's|x86_64-unknown-linux-musl|arm-unknown-linux-musleabihf|g' \
-                  | sed 's|Linux_arm64|Linux_armv7|g' \
-                  | sed 's|Linux_x86_64|Linux_armv7|g')
-                ;;
-              x86_64)
-                SRCURL=$(echo "$SRCURL" \
-                  | sed 's|aarch64-unknown-linux-musl|x86_64-unknown-linux-musl|g' \
-                  | sed 's|arm-unknown-linux-musleabihf|x86_64-unknown-linux-musl|g' \
-                  | sed 's|Linux_arm64|Linux_x86_64|g' \
-                  | sed 's|Linux_armv7|Linux_x86_64|g')
-                ;;
-              i686)
-                SRCURL=$(echo "$SRCURL" \
-                  | sed 's|aarch64-unknown-linux-musl|i686-unknown-linux-musl|g' \
-                  | sed 's|arm-unknown-linux-musleabihf|i686-unknown-linux-musl|g' \
-                  | sed 's|Linux_arm64|Linux_i386|g' \
-                  | sed 's|Linux_armv7|Linux_i386|g')
-                ;;
-            esac
+            RAW_URL="${TERMUX_PKG_SRCURL:-}"
+            RAW_URL=$(echo "$RAW_URL" \
+              | sed "s|\${TERMUX_PKG_VERSION}|$VERSION|g" \
+              | sed "s|\$TERMUX_PKG_VERSION|$VERSION|g")
+            SRCURL=$(resolve_srcurl "$RAW_URL")
 
             PKG_BUILD="build_tmp/${pkg}_${ARCH}"
             TERMUX_PREFIX="$(pwd)/$PKG_BUILD/data/data/com.termux/files/usr"
             TERMUX_PKG_SRCDIR="/tmp/src_${pkg}_${ARCH}"
             mkdir -p "$PKG_BUILD/DEBIAN" "$TERMUX_PREFIX/bin" "$TERMUX_PKG_SRCDIR"
 
-            HAS_BINARY=false
-            DOWNLOAD_SUCCESS=false
+            HAS_CONTENT=false
+            DOWNLOAD_OK=false
 
+            if grep -q 'cargo build' "$BUILD_SH" 2>/dev/null; then
+              echo "  SKIP: Rust build not supported in CI"
+              rm -rf "$PKG_BUILD" "$TERMUX_PKG_SRCDIR"
+              continue
+            fi
+
+            TMPFILE="/tmp/${pkg}_${ARCH}_src"
             if [ -n "$SRCURL" ]; then
-              TMPFILE="/tmp/${pkg}_${ARCH}_src"
-              echo "  Downloading: $SRCURL"
-
-              if wget -q --timeout=60 --tries=3 "$SRCURL" -O "$TMPFILE" 2>/dev/null; then
-
+              echo "  ↓ $SRCURL"
+              if wget -q --timeout=90 --tries=3 "$SRCURL" -O "$TMPFILE" 2>/dev/null; then
                 if [ -n "${TERMUX_PKG_SHA256:-}" ]; then
                   ACTUAL=$(sha256sum "$TMPFILE" | cut -d' ' -f1)
-                  if [ "$ACTUAL" != "$TERMUX_PKG_SHA256" ]; then
-                    echo "  WARNING: SHA256 mismatch for $pkg"
-                    echo "    Expected : $TERMUX_PKG_SHA256"
-                    echo "    Got      : $ACTUAL"
-                    if echo "$SRCURL" | grep -q "github.com/djunekz"; then
-                      echo "  Trusted source — proceeding despite SHA256 mismatch"
-                      DOWNLOAD_SUCCESS=true
+                  if [ "$ACTUAL" = "$TERMUX_PKG_SHA256" ]; then
+                    echo "  ✓ SHA256 OK"
+                    DOWNLOAD_OK=true
+                  else
+                    echo "  ⚠ SHA256 mismatch (${ACTUAL:0:16}... vs ${TERMUX_PKG_SHA256:0:16}...)"
+                    if echo "$SRCURL" | grep -qE "github.com/djunekz|djunekz.github.io"; then
+                      echo "  ✓ Trusted source, proceeding"
+                      DOWNLOAD_OK=true
                     else
                       rm -f "$TMPFILE"
                     fi
-                  else
-                    echo "  SHA256: OK"
-                    DOWNLOAD_SUCCESS=true
                   fi
                 else
-                  DOWNLOAD_SUCCESS=true
+                  DOWNLOAD_OK=true
                 fi
+              else
+                echo "  ✗ Download failed"
+              fi
+            fi
 
-                if [ "$DOWNLOAD_SUCCESS" = "true" ]; then
-                  FNAME=$(basename "$SRCURL" | cut -d'?' -f1)
-                  FILETYPE=$(file -b "$TMPFILE" | tr '[:upper:]' '[:lower:]')
+            if [ "$DOWNLOAD_OK" = "true" ]; then
+              FNAME=$(basename "$SRCURL" | cut -d'?' -f1)
+              FILETYPE=$(file -b "$TMPFILE" | tr '[:upper:]' '[:lower:]')
 
-                  case "$FNAME" in
-                    *.tar.gz|*.tgz)
-                      tar -xzf "$TMPFILE" -C "$TERMUX_PKG_SRCDIR" 2>/dev/null || \
-                        tar -xf  "$TMPFILE" -C "$TERMUX_PKG_SRCDIR" 2>/dev/null || true
-                      INNER=$(find "$TERMUX_PKG_SRCDIR" -mindepth 1 -maxdepth 1 -type d | head -1)
-                      [ -n "$INNER" ] && TERMUX_PKG_SRCDIR="$INNER"
-                      ;;
-                    *.tar.xz)
-                      tar -xJf "$TMPFILE" -C "$TERMUX_PKG_SRCDIR" 2>/dev/null || \
-                        tar -xf  "$TMPFILE" -C "$TERMUX_PKG_SRCDIR" 2>/dev/null || true
-                      INNER=$(find "$TERMUX_PKG_SRCDIR" -mindepth 1 -maxdepth 1 -type d | head -1)
-                      [ -n "$INNER" ] && TERMUX_PKG_SRCDIR="$INNER"
-                      ;;
-                    *.tar.bz2)
-                      tar -xjf "$TMPFILE" -C "$TERMUX_PKG_SRCDIR" 2>/dev/null || \
-                        tar -xf  "$TMPFILE" -C "$TERMUX_PKG_SRCDIR" 2>/dev/null || true
-                      INNER=$(find "$TERMUX_PKG_SRCDIR" -mindepth 1 -maxdepth 1 -type d | head -1)
-                      [ -n "$INNER" ] && TERMUX_PKG_SRCDIR="$INNER"
-                      ;;
-                    *.tar)
-                      tar -xf "$TMPFILE" -C "$TERMUX_PKG_SRCDIR" 2>/dev/null || true
-                      INNER=$(find "$TERMUX_PKG_SRCDIR" -mindepth 1 -maxdepth 1 -type d | head -1)
-                      [ -n "$INNER" ] && TERMUX_PKG_SRCDIR="$INNER"
-                      ;;
-                    *.zip)
-                      unzip -q "$TMPFILE" -d "$TERMUX_PKG_SRCDIR" 2>/dev/null || true
-                      INNER=$(find "$TERMUX_PKG_SRCDIR" -mindepth 1 -maxdepth 1 -type d | head -1)
-                      [ -n "$INNER" ] && TERMUX_PKG_SRCDIR="$INNER"
-                      ;;
-                    *.deb)
-                      DEB_PKG_ARCH=$(dpkg-deb -f "$TMPFILE" Architecture 2>/dev/null || echo "all")
-                      if [ "$DEB_PKG_ARCH" = "all" ] || [ "$DEB_PKG_ARCH" = "$DEB_ARCH" ]; then
-                        dpkg-deb -x "$TMPFILE" "$PKG_BUILD/" 2>/dev/null || true
-                        echo "  Repacked pre-built .deb (arch: $DEB_PKG_ARCH)"
-                        [ -f "$TERMUX_PREFIX/bin/$pkg" ] && HAS_BINARY=true
-                      else
-                        echo "  SKIP: pre-built .deb arch=$DEB_PKG_ARCH != $DEB_ARCH"
-                        DOWNLOAD_SUCCESS=false
-                      fi
-                      ;;
-                    *)
-                      if echo "$FILETYPE" | grep -q "elf"; then
-                        ELF_ARCH=""
-                        case "$FILETYPE" in
-                          *aarch64*|*arm64*)      ELF_ARCH="aarch64" ;;
-                          *arm*|*eabi*)           ELF_ARCH="arm" ;;
-                          *x86-64*|*x86_64*)     ELF_ARCH="x86_64" ;;
-                          *80386*|*i386*|*i686*)  ELF_ARCH="i686" ;;
-                        esac
-                        if [ -z "$ELF_ARCH" ] || [ "$ELF_ARCH" = "$ARCH" ]; then
-                          cp "$TMPFILE" "$TERMUX_PREFIX/bin/$pkg"
-                          chmod +x "$TERMUX_PREFIX/bin/$pkg"
-                          HAS_BINARY=true
-                          echo "  Installed ELF binary (arch: ${ELF_ARCH:-unknown})"
-                        else
-                          echo "  SKIP: ELF arch=$ELF_ARCH != $ARCH — skipping binary, no .deb"
-                          rm -f "$TMPFILE"
-                          DOWNLOAD_SUCCESS=false
-                          continue
-                        fi
-                      else
-                        cp "$TMPFILE" "$TERMUX_PREFIX/bin/$pkg"
-                        chmod +x "$TERMUX_PREFIX/bin/$pkg"
-                        HAS_BINARY=true
-                        echo "  Installed script/platform-independent"
-                      fi
-                      ;;
-                  esac
+              case "$FNAME" in
+                *.deb)
+                  DEB_ARCH_FILE=$(dpkg-deb -f "$TMPFILE" Architecture 2>/dev/null || echo "all")
+                  if [ "$DEB_ARCH_FILE" = "all" ] || [ "$DEB_ARCH_FILE" = "$DEB_ARCH" ]; then
+                    dpkg-deb -x "$TMPFILE" "$PKG_BUILD/" 2>/dev/null || true
+                    echo "  ✓ Pre-built .deb repacked (arch: $DEB_ARCH_FILE)"
+                    HAS_CONTENT=true
+                  else
+                    echo "  ✗ .deb arch mismatch ($DEB_ARCH_FILE ≠ $DEB_ARCH)"
+                    DOWNLOAD_OK=false
+                  fi
                   rm -f "$TMPFILE"
-                fi
-              else
-                echo "  WARNING: Download failed for $pkg"
-              fi
-            fi
+                  ;;
 
-            if grep -q 'termux_step_make_install' "$BUILD_SH" 2>/dev/null; then
+                *.tar.gz|*.tgz|*.tar.xz|*.tar.bz2|*.tar|*.zip)
+                  SRCDIR_NEW=$(extract_archive "$TMPFILE" "$TERMUX_PKG_SRCDIR")
+                  TERMUX_PKG_SRCDIR="$SRCDIR_NEW"
+                  rm -f "$TMPFILE"
+                  echo "  ✓ Extracted → $TERMUX_PKG_SRCDIR"
+                  ;;
 
-              if grep -q 'cargo build' "$BUILD_SH" 2>/dev/null; then
-                echo "  SKIP termux_step_make_install: butuh Rust cross-compile (pmcli)"
-              else
-                echo "  Running termux_step_make_install()..."
-
-                echo "c2V0ICtlCnNob3B0IC1zIGV4cGFuZF9hbGlhc2VzCgpfbnBtX3dyYXBwZXIoKSB7CiAgaWYgWyAiJDEiID0gImluc3RhbGwiIF0gfHwgWyAiJDEiID0gImNpIiBdOyB0aGVuCiAgICBlY2hvICIgICAgW0NJXSBucG0gJCogc2tpcHBlZCAod2lsbCBydW4gb24tZGV2aWNlKSIKICAgIHJldHVybiAwCiAgZmkKICBjb21tYW5kIG5wbSAiJEAiCn0KYWxpYXMgbnBtPSdfbnBtX3dyYXBwZXInCgpfcGlwX3dyYXBwZXIoKSB7CiAgaWYgWyAiJDEiID0gImluc3RhbGwiIF07IHRoZW4KICAgIHNoaWZ0CiAgICBjb21tYW5kIHBpcCBpbnN0YWxsICIkQCIgLS10YXJnZXQ9IiR7VEVSTVVYX1BSRUZJWH0vbGliL3B5dGhvbjMvZGlzdC1wYWNrYWdlcyIgLS1uby1kZXBzIC0tcXVpZXQgMj4vZGV2L251bGwgXAogICAgICB8fCBjb21tYW5kIHBpcCBpbnN0YWxsICIkQCIgLS10YXJnZXQ9IiR7VEVSTVVYX1BSRUZJWH0vbGliL3B5dGhvbjMvZGlzdC1wYWNrYWdlcyIgLS1uby1kZXBzIC0tcXVpZXQKICAgIHJldHVybiAwCiAgZmkKICBjb21tYW5kIHBpcCAiJEAiCn0KYWxpYXMgcGlwPSdfcGlwX3dyYXBwZXInCgpzb3VyY2UgIiRCVUlMRF9TSCIgMj4vZGV2L251bGwgfHwgdHJ1ZQoKaWYgZGVjbGFyZSAtZiB0ZXJtdXhfc3RlcF9tYWtlX2luc3RhbGwgPiAvZGV2L251bGwgMj4mMTsgdGhlbgogIHRlcm11eF9zdGVwX21ha2VfaW5zdGFsbCAyPiYxIHwgc2VkICdzL14vICAgIC8nCmZpCg==" \
-                  | base64 -d > /tmp/_tas_runner.sh
-
-                STEP_RESULT=0
-                TERMUX_PREFIX="$TERMUX_PREFIX" \
-                TERMUX_PKG_SRCDIR="$TERMUX_PKG_SRCDIR" \
-                TERMUX_PKG_VERSION="$VERSION" \
-                TERMUX_ARCH="$ARCH" \
-                BUILD_SH="$BUILD_SH" \
-                bash /tmp/_tas_runner.sh || STEP_RESULT=$?
-
-                if [ -f "$TERMUX_PREFIX/bin/$pkg" ]; then
-                  HAS_BINARY=true
-                  echo "  termux_step_make_install OK (bin/$pkg terbuat)"
-                else
-                  FILE_COUNT=$(find "$PKG_BUILD/data" -type f 2>/dev/null | wc -l)
-                  if [ "$FILE_COUNT" -gt 0 ]; then
-                    echo "  termux_step_make_install: partial — $FILE_COUNT file diinstall (tanpa bin/$pkg)"
-                    HAS_BINARY=true
+                *)
+                  if echo "$FILETYPE" | grep -q "elf"; then
+                    if elf_arch_ok "$TMPFILE"; then
+                      cp "$TMPFILE" "$TERMUX_PREFIX/bin/$pkg"
+                      chmod +x "$TERMUX_PREFIX/bin/$pkg"
+                      HAS_CONTENT=true
+                      echo "  ✓ Direct ELF binary installed"
+                    else
+                      echo "  ✗ ELF arch mismatch, skip"
+                      DOWNLOAD_OK=false
+                    fi
+                    rm -f "$TMPFILE"
                   else
-                    echo "  termux_step_make_install: WARNING — tidak ada file terbuat"
+                    SRCDIR_NEW=$(extract_archive "$TMPFILE" "$TERMUX_PKG_SRCDIR")
+                    rm -f "$TMPFILE"
+                    if [ -n "$(ls -A "$TERMUX_PKG_SRCDIR" 2>/dev/null)" ]; then
+                      TERMUX_PKG_SRCDIR="$SRCDIR_NEW"
+                      echo "  ✓ Extracted (extensionless) → $TERMUX_PKG_SRCDIR"
+                    else
+                      mv "$TMPFILE" "$TERMUX_PREFIX/bin/$pkg" 2>/dev/null || true
+                      chmod +x "$TERMUX_PREFIX/bin/$pkg" 2>/dev/null || true
+                      HAS_CONTENT=true
+                      echo "  ✓ Installed as plain file"
+                    fi
                   fi
-                fi
-              fi
+                  ;;
+              esac
             fi
 
-            if [ "$HAS_BINARY" = "false" ] && [ "$DOWNLOAD_SUCCESS" = "true" ] \
-               && [ -d "$TERMUX_PKG_SRCDIR" ] \
-               && [ "$(ls -A "$TERMUX_PKG_SRCDIR" 2>/dev/null)" ]; then
+            if [ "$DOWNLOAD_OK" = "true" ] && [ "$HAS_CONTENT" = "false" ] \
+               && grep -q '^termux_step_make()' "$BUILD_SH" 2>/dev/null; then
+              echo "  → Running termux_step_make()..."
+              ABSBUILD="$(pwd)/$BUILD_SH"
+              bash -c "
+                set +e
+                source '$ABSBUILD' 2>/dev/null || true
+                TERMUX_PREFIX='$TERMUX_PREFIX'
+                TERMUX_PKG_SRCDIR='$TERMUX_PKG_SRCDIR'
+                TERMUX_PKG_VERSION='$VERSION'
+                TERMUX_ARCH='$ARCH'
+                cd '$TERMUX_PKG_SRCDIR' 2>/dev/null || true
+                declare -f termux_step_make >/dev/null 2>&1 && termux_step_make 2>&1 | sed 's/^/    /'
+              " || true
+            fi
 
-              BIN=""
+            if [ "$DOWNLOAD_OK" = "true" ] && [ "$HAS_CONTENT" = "false" ] \
+               && grep -q 'termux_step_make_install' "$BUILD_SH" 2>/dev/null; then
+              echo "  → Running termux_step_make_install()..."
 
-              while IFS= read -r c; do
-                CT=$(file -b "$c" | tr '[:upper:]' '[:lower:]')
-                if echo "$CT" | grep -q "elf"; then
-                  CA=""
-                  case "$CT" in
-                    *aarch64*|*arm64*)      CA="aarch64" ;;
-                    *arm*|*eabi*)           CA="arm" ;;
-                    *x86-64*|*x86_64*)     CA="x86_64" ;;
-                    *80386*|*i386*|*i686*)  CA="i686" ;;
-                  esac
-                  { [ -z "$CA" ] || [ "$CA" = "$ARCH" ]; } && BIN="$c" && break
-                else
-                  BIN="$c" && break
-                fi
-              done < <(find "$TERMUX_PKG_SRCDIR" -maxdepth 4 -type f \
-                \( -name "$pkg" -o -name "${pkg}.sh" -o -name "${pkg}.py" \
-                   -o -name "${pkg}.js" -o -name "${pkg}-${ARCH}" \) 2>/dev/null)
+              PATCHED="/tmp/patched_build_${pkg}.sh"
+              sed 's|pip install \(--[^ ]*\)* \([^-]\)|pip install --break-system-packages \1 \2|g;
+                   s|pip install \([^-]\)|pip install --break-system-packages \1|g' \
+                "$(pwd)/$BUILD_SH" > "$PATCHED"
 
-              if [ -z "$BIN" ]; then
-                while IFS= read -r c; do
-                  CT=$(file -b "$c" | tr '[:upper:]' '[:lower:]')
-                  if echo "$CT" | grep -q "elf"; then
-                    CA=""
-                    case "$CT" in
-                      *aarch64*|*arm64*)      CA="aarch64" ;;
-                      *arm*|*eabi*)           CA="arm" ;;
-                      *x86-64*|*x86_64*)     CA="x86_64" ;;
-                      *80386*|*i386*|*i686*)  CA="i686" ;;
-                    esac
-                    { [ -z "$CA" ] || [ "$CA" = "$ARCH" ]; } && BIN="$c" && break
-                  fi
-                done < <(find "$TERMUX_PKG_SRCDIR" -maxdepth 4 -type f -perm /111 2>/dev/null)
-              fi
+              ABSBUILD="$PATCHED"
+              bash -c "
+                set +e
+                source '$ABSBUILD' 2>/dev/null || true
+                TERMUX_PREFIX='$TERMUX_PREFIX'
+                TERMUX_PKG_SRCDIR='$TERMUX_PKG_SRCDIR'
+                TERMUX_PKG_VERSION='$VERSION'
+                TERMUX_ARCH='$ARCH'
+                declare -f termux_step_make_install >/dev/null 2>&1 \
+                  && termux_step_make_install 2>&1 | sed 's/^/    /'
+              " || true
+              rm -f "$PATCHED"
 
-              if [ -z "$BIN" ]; then
-                while IFS= read -r c; do
-                  BIN="$c" && break
-                done < <(find "$TERMUX_PKG_SRCDIR" -maxdepth 4 -type f \
-                  \( -name "main.py" -o -name "main.sh" -o -name "main.js" \
-                     -o -name "index.js" -o -name "${pkg}.py" \
-                     -o -name "${pkg}.sh" \) 2>/dev/null)
-              fi
-
-              if [ -n "$BIN" ]; then
-                SCRIPT_NAME=$(basename "$BIN")
-                PKG_SHARE="$TERMUX_PREFIX/share/$pkg"
-                mkdir -p "$PKG_SHARE"
-
-                find "$TERMUX_PKG_SRCDIR" -maxdepth 6 -type f | while IFS= read -r sf; do
-                  rp="${sf#$TERMUX_PKG_SRCDIR/}"
-                  dd_="$PKG_SHARE/$(dirname "$rp")"
-                  mkdir -p "$dd_"
-                  cp "$sf" "$dd_/" 2>/dev/null || true
-                done
-
-                BT=$(file -b "$BIN" | tr '[:upper:]' '[:lower:]')
-                if echo "$BT" | grep -q "elf"; then
-                  cp "$BIN" "$TERMUX_PREFIX/bin/$pkg"
-                  chmod +x "$TERMUX_PREFIX/bin/$pkg"
-                  HAS_BINARY=true
-                  echo "  Fallback: ELF binary installed"
-                else
-                  WR="$TERMUX_PREFIX/bin/$pkg"
-                  case "$SCRIPT_NAME" in
-                    *.py)
-                      printf '%s\n' \
-                        '#!/data/data/com.termux/files/usr/bin/python3' \
-                        'import sys, os' \
-                        '_d = os.path.dirname(os.path.realpath(__file__))' \
-                        "_s = os.path.join(_d, '..', 'share', '$pkg')" \
-                        'os.chdir(_s); sys.path.insert(0, _s)' \
-                        "exec(open(os.path.join(_s, '$SCRIPT_NAME')).read())" \
-                        > "$WR"
-                      ;;
-                    *.js)
-                      printf '%s\n' \
-                        '#!/data/data/com.termux/files/usr/bin/bash' \
-                        '_d="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"' \
-                        "exec node \"\$_d/../share/$pkg/$SCRIPT_NAME\" \"\$@\"" \
-                        > "$WR"
-                      ;;
-                    *)
-                      printf '%s\n' \
-                        '#!/data/data/com.termux/files/usr/bin/bash' \
-                        '_d="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"' \
-                        "cd \"\$_d/../share/$pkg\" || exit 1" \
-                        "exec bash '$SCRIPT_NAME' \"\$@\"" \
-                        > "$WR"
-                      ;;
-                  esac
-                  chmod +x "$WR"
-                  HAS_BINARY=true
-                  echo "  Fallback: wrapper created -> share/$pkg/$SCRIPT_NAME"
-                fi
+              if [ -f "$TERMUX_PREFIX/bin/$pkg" ]; then
+                HAS_CONTENT=true
+                echo "  ✓ bin/$pkg created"
               else
-                echo "  WARNING: No entry point found for $pkg [$ARCH]"
+                FC=$(find "$PKG_BUILD/data" -type f 2>/dev/null | wc -l)
+                if [ "$FC" -gt 0 ]; then
+                  HAS_CONTENT=true
+                  echo "  ✓ $FC file(s) installed (no bin/$pkg)"
+                else
+                  echo "  ✗ termux_step_make_install produced no files"
+                fi
               fi
             fi
 
-            if [ "$HAS_BINARY" = "false" ] \
-               && [ -z "$(find "$PKG_BUILD/data" -type f 2>/dev/null)" ]; then
-              echo "  SKIP: No installable content for $pkg [$ARCH]"
+            if [ "$DOWNLOAD_OK" = "true" ] && [ "$HAS_CONTENT" = "false" ] \
+               && [ -n "$(ls -A "$TERMUX_PKG_SRCDIR" 2>/dev/null)" ]; then
+              echo "  → Auto-detecting entrypoint from source..."
+              BIN=$(find_entrypoint "$TERMUX_PKG_SRCDIR" "$pkg")
+              if [ -n "$BIN" ]; then
+                install_entrypoint "$BIN" "$pkg" "$TERMUX_PREFIX" "$TERMUX_PKG_SRCDIR"
+                HAS_CONTENT=true
+              else
+                echo "  ✗ No entrypoint found in source"
+              fi
+            fi
+
+            if [ "$HAS_CONTENT" = "false" ]; then
+              echo "  SKIP: Nothing packaged for $pkg [$ARCH]"
               rm -rf "$PKG_BUILD" "$TERMUX_PKG_SRCDIR"
               continue
             fi
 
             PKG_DESC="${TERMUX_PKG_DESCRIPTION:-$pkg}"
             PKG_HOMEPAGE="${TERMUX_PKG_HOMEPAGE:-https://github.com/djunekz/termux-app-store}"
-            PKG_LICENSE="${TERMUX_PKG_LICENSE:-unknown}"
             PKG_MAINTAINER="${TERMUX_PKG_MAINTAINER:-@termux-app-store}"
             PKG_DEPENDS="${TERMUX_PKG_DEPENDS:-}"
-            PKG_DEPENDS=$(echo "$PKG_DEPENDS" | \
-              sed 's/binutils-is-llvm[^,]*,\?//g; s/,\s*,/,/g; s/^,\|,$//g' | \
-              sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+            PKG_DEPENDS=$(echo "$PKG_DEPENDS" \
+              | sed 's/binutils-is-llvm[^,]*,\?//g; s/rust[^,]*,\?//g' \
+              | sed 's/,[[:space:]]*,/,/g; s/^[[:space:],]*//; s/[[:space:],]*$//')
 
             INSTALLED_SIZE=$(du -sk "$PKG_BUILD/data" 2>/dev/null | cut -f1 || echo "1")
 
@@ -377,24 +359,24 @@ jobs:
               printf 'Homepage: %s\n'       "$PKG_HOMEPAGE"
               printf 'Description: %s\n'    "$PKG_DESC"
             } > "$PKG_BUILD/DEBIAN/control"
-            [ -n "$PKG_DEPENDS" ] && echo "Depends: $PKG_DEPENDS" >> "$PKG_BUILD/DEBIAN/control"
+            [ -n "$PKG_DEPENDS" ] && printf 'Depends: %s\n' "$PKG_DEPENDS" >> "$PKG_BUILD/DEBIAN/control"
 
+            # ── Pack .deb ─────────────────────────────────────────────────────────
             DEB_OUT="output/${pkg}_${VERSION}_${DEB_ARCH}.deb"
             if dpkg-deb --build "$PKG_BUILD" "$DEB_OUT" 2>/dev/null; then
-              SIZE=$(du -h "$DEB_OUT" | cut -f1)
-              echo "  OK: $(basename "$DEB_OUT") ($SIZE)"
+              echo "  ✓ $(basename "$DEB_OUT") ($(du -h "$DEB_OUT" | cut -f1))"
             else
-              echo "  ERROR: dpkg-deb failed for $pkg [$ARCH]"
+              echo "  ✗ dpkg-deb build failed"
             fi
 
-            rm -rf "$TERMUX_PKG_SRCDIR"
+            rm -rf "$TERMUX_PKG_SRCDIR" "/tmp/patched_build_${pkg}.sh"
           done
 
           echo ""
           echo "Total .deb built for $ARCH: $(ls output/*.deb 2>/dev/null | wc -l)"
 
       - name: Upload artifact for ${{ matrix.arch }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: debs-${{ matrix.arch }}
           path: output/*.deb
@@ -409,13 +391,13 @@ jobs:
         run: sudo apt-get install -y dpkg-dev
 
       - name: Checkout source (to read packages/ metadata)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           ref: master
           path: source
 
       - name: Checkout gh-pages branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: gh-pages
@@ -437,7 +419,7 @@ jobs:
           mkdir -p gh-pages/pool/main
 
       - name: Download all arch artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           pattern: debs-*
           path: all-debs/
