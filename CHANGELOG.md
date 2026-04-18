@@ -22,6 +22,7 @@ and this project adheres to semantic versioning.
 ### Update
 - Package `aura` v0.8.2 → v0.10.0
 - Package `fd` v10.3.0 → v10.4.2
+- Package `ani-cli` v4.10 → v4.11
 
 ---
 
