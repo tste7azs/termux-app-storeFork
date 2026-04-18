@@ -17,6 +17,7 @@ and this project adheres to semantic versioning.
 - Package `cybertuz` v1.0.1 - Updated metadata
 - Package `impulse` v1.0.0 - Updated metadata
 - Package `pymaker` v1.0.0 - Updated metadata
+- Package `fd` v10.4.2 - Updated metadata
 
 ### Update
 - Package `aura` v0.8.2 → v0.10.0
