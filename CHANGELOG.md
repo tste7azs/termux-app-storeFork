@@ -11,6 +11,23 @@ and this project adheres to semantic versioning.
 ### Added
 - New menu `termux-build init` for auto create and build package
 - New file termux-build-init.sh in directory tools for auto create and build package
+- Package `auxscan` v1.0.0 - https://github.com/Gameye98/Auxscan
+- Package `clickjacking-tester` v1.0.0 - A python script designed to check if the website if vulnerable of clickjacking and create a poc
+- Package `cmseek` v1.1.3 - CMS Detection and Exploitation suite - Scan WordPress, Joomla, Drupal and over 180 other CMSs
+- Package `cmsmap` v1.0.0 - CMSmap is a python open source CMS scanner that automates the process of detecting security flaws of the most popular CMSs. 
+- Package `gemail-hack` v1.0.0 - python script for Hack gmail account brute force
+- Package `ghosttrack` v1.0.0 - Useful tool to track location or mobile number
+- Package `goblinwordgenerator` v1.0.0 - Python wordlist generator 
+- Package `hammer` v1.0.0 - Ddos attack tool for termux
+- Package `hash-buster` v1.0.0 - hash-buster — auto-packaged by termux-build-init
+- Package `ht-wps-breaker` v1.0.0 - HT-WPS Breaker (High Touch WPS Breaker)
+- Package `hunner` v1.0.0 - Hacking framework
+- Package `instareporter` v1.0.0 - Instagram Mass Reporting Tool
+- Package `ip-tracker` v1.0.0 - Track anyones IP just opening a link!
+- Package `ipgeolocation` v2.0.4 - Retrieve IP Geolocation information
+- Package `lazymux` v1.0.0 - termux tool installer
+- Package `termux-ai` v1.0.0 - Interactive AI tool for Termux with 10+ providers and 50+ image models ✨
+- Package `userfinder` v1.0.0 - userfinder — auto-packaged by termux-build-init
 
 ### Changed
 - Package `bashxt` v2.2 - Updated metadata
