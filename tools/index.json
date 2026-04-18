@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-18T01:05:35.930243+00:00",
+  "generated_at": "2026-04-18T01:15:32.213103+00:00",
   "total": 25,
   "packages": [
     {
@@ -252,7 +252,7 @@
     },
     {
       "package": "sigit",
-      "version": "2.0-pre",
+      "version": "2.0",
       "maintainer": "@termux-app-store",
       "description": "SIGIT - Simple Information Gathering Toolkit",
       "homepage": "https://github.com/termuxhackers-id/SIGIT",
@@ -260,7 +260,7 @@
       "download_size": "Unknown",
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://api.github.com/repos/termuxhackers-id/SIGIT/tarball/2.0-pre",
+      "srcurl": "https://api.github.com/repos/termuxhackers-id/SIGIT/tarball/${TERMUX_PKG_VERSION}-pre",
       "sha256": "2bfe129b478dc758133f6380dc5f1c27da8af2c3cfe7327e826d4f974e20c993",
       "platform_independent": false
     },
