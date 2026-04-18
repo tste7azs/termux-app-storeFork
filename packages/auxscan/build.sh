@@ -1,5 +1,5 @@
 TERMUX_PKG_HOMEPAGE=https://github.com/Gameye98/Auxscan
-TERMUX_PKG_DESCRIPTION="https://github.com/Gameye98/Auxscan"
+TERMUX_PKG_DESCRIPTION="Vulnerability Scanner to automate certain tasks"
 TERMUX_PKG_LICENSE="UNKNOWN"
 TERMUX_PKG_MAINTAINER="@termux-app-store"
 TERMUX_PKG_VERSION=1.0.0
