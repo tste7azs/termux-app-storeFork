@@ -1,12 +1,12 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-18T00:40:03.473967+00:00",
+  "generated_at": "2026-04-18T00:51:13.632011+00:00",
   "total": 25,
   "packages": [
     {
       "package": "ani-cli",
-      "version": "4.10",
+      "version": "4.11",
       "maintainer": "@termux-app-store",
       "description": "A cli tool to browse and play anime",
       "homepage": "https://github.com/pystardust/ani-cli",
@@ -15,7 +15,7 @@
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/pystardust/ani-cli/releases/download/v${TERMUX_PKG_VERSION}/ani-cli",
-      "sha256": "38599dc5bb65a5b9f78e936ed42ffe16b62095dbc6621a5b578ed3e29aac4f3e",
+      "sha256": "1f35c47b0c6d924261d096663d16b03d489f488fcc38c74e4fe87b45a330b7cf",
       "platform_independent": false,
       "depends": [
         "nodejs"
