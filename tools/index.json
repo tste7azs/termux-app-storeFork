@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-18T05:35:07.474804+00:00",
-  "total": 42,
+  "generated_at": "2026-04-18T21:52:09.344713+00:00",
+  "total": 43,
   "packages": [
     {
       "package": "ani-cli",
@@ -584,6 +584,26 @@
       "srcurl": "https://github.com/Anon4You/Termux-Ai/archive/refs/heads/main.tar.gz",
       "sha256": "ca5e517ef81e8ef94bc9433514cae4ab305d79f76bc1d7682b2d5f85d41bf8b6",
       "platform_independent": false
+    },
+    {
+      "package": "termux-sync",
+      "version": "0.1.0",
+      "maintainer": "@termux-app-store",
+      "description": "OpenSource Backup and restore your entire Termux environment across devices.",
+      "homepage": "https://github.com/djunekz/termux-sync",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/djunekz/termux-sync/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz",
+      "sha256": "710480ce4acb07e5f423b2f7b5da97c328106e6f8401296636faeb63e954fb77",
+      "platform_independent": false,
+      "depends": [
+        "git",
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
     },
     {
       "package": "tuifimanager",
