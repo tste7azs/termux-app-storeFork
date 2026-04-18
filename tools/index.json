@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-18T05:31:25.179158+00:00",
+  "generated_at": "2026-04-18T05:35:07.474804+00:00",
   "total": 42,
   "packages": [
     {
@@ -42,7 +42,7 @@
       "package": "auxscan",
       "version": "1.0.0",
       "maintainer": "@termux-app-store",
-      "description": "https://github.com/Gameye98/Auxscan",
+      "description": "Vulnerability Scanner to automate certain tasks",
       "homepage": "https://github.com/Gameye98/Auxscan",
       "license": "UNKNOWN",
       "download_size": "Unknown",
