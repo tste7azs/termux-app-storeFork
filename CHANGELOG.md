@@ -11,7 +11,7 @@ and this project adheres to semantic versioning.
 ### Added
 - New menu `termux-build init` for auto create and build package
 - New file termux-build-init.sh in directory tools for auto create and build package
-- Package `auxscan` v1.0.0 - https://github.com/Gameye98/Auxscan
+- Package `auxscan` v1.0.0 - Vulnerability Scanner to automate certain tasks, improve
 - Package `clickjacking-tester` v1.0.0 - A python script designed to check if the website if vulnerable of clickjacking and create a poc
 - Package `cmseek` v1.1.3 - CMS Detection and Exploitation suite - Scan WordPress, Joomla, Drupal and over 180 other CMSs
 - Package `cmsmap` v1.0.0 - CMSmap is a python open source CMS scanner that automates the process of detecting security flaws of the most popular CMSs. 
