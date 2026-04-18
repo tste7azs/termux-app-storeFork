@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-17T02:50:47.521594+00:00",
+  "generated_at": "2026-04-18T00:32:29.516231+00:00",
   "total": 25,
   "packages": [
     {
@@ -140,7 +140,7 @@
     },
     {
       "package": "fd",
-      "version": "10.3.0",
+      "version": "10.4.2",
       "maintainer": "@termux-app-store",
       "description": "A simple, fast and user-friendly alternative to 'find'",
       "homepage": "https://github.com/sharkdp/fd",
