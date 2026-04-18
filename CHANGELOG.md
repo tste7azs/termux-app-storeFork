@@ -24,6 +24,7 @@ and this project adheres to semantic versioning.
 - Package `fd` v10.3.0 → v10.4.2
 - Package `ani-cli` v4.10 → v4.11
 - Package `uv` v0.10.4 → v0.11.7
+- Package `sigit` v2.0-pre → v2.0
 
 ---
 
