@@ -347,13 +347,10 @@ detect_method() {
     elif ls "$src"/*.pl &>/dev/null 2>&1; then echo "perl"
     elif ls "$src"/*.lua &>/dev/null 2>&1; then echo "lua"
     elif ls "$src"/*.php &>/dev/null 2>&1; then echo "php"
-    elif ls "$src"/*.psm1 "$src"/*.psd1 "$src"/*.ps1 &>/dev/null 2>&1; then echo "powershell"
     elif ls "$src"/*.java &>/dev/null 2>&1; then echo "java"
     elif ls "$src"/*.kt &>/dev/null 2>&1;  then echo "kotlin"
     elif ls "$src"/*.swift &>/dev/null 2>&1; then echo "swift"
-    elif ls "$src"/*.cs &>/dev/null 2>&1;  then echo "csharp"
     elif ls "$src"/*.c "$src"/*.cpp &>/dev/null 2>&1; then echo "make"
-    elif find "$src" -maxdepth 2 -name "*.psm1" -o -name "*.psd1" 2>/dev/null | grep -q .; then echo "powershell"
     else echo "unknown"
     fi
 }
@@ -361,16 +358,35 @@ detect_method() {
 detect_entrypoint() {
     local src="$1"
     local pkg="$2"
-
     local f
+
     f=$(grep -rl '__main__' "$src"/*.py 2>/dev/null | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
     [[ -f "$src/$pkg.py" ]] && { echo "$pkg.py"; return; }
     f=$(ls "$src"/*.py 2>/dev/null | grep -vi 'setup\|conf\|config\|test' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
+    if [[ -f "$src/$pkg" ]]; then
+        local _ft
+        _ft=$(file -b "$src/$pkg" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+        # Accept if it's a script/text/ELF, reject if it's a doc/image/archive
+        if echo "$_ft" | grep -qiE 'script|text|shell|elf|executable|ascii|unicode'; then
+            echo "$pkg"; return
+        fi
+    fi
+
     [[ -f "$src/$pkg.sh" ]] && { echo "$pkg.sh"; return; }
     f=$(ls "$src"/*.sh 2>/dev/null | grep -vi 'setup\|install\|config\|test' | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+    f=$(ls "$src"/*.sh 2>/dev/null | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+
+    f=$(find "$src" -maxdepth 1 -type f -name "$pkg" -perm /111 2>/dev/null | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+    f=$(find "$src" -maxdepth 1 -type f -perm /111 \
+        ! -iname "*.md" ! -iname "*.txt" ! -iname "*.png" \
+        ! -iname "*.jpg" ! -iname "*.gif" ! -iname "LICENSE*" \
+        2>/dev/null | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
     [[ -f "$src/$pkg.psm1" ]] && { echo "$pkg.psm1"; return; }
@@ -380,7 +396,15 @@ detect_entrypoint() {
     f=$(ls "$src"/*.ps1 2>/dev/null | grep -vi 'test\|install\|setup' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
-    ls "$src" | head -n1
+    f=$(find "$src" -maxdepth 1 -type f \
+        ! -iname "README*" ! -iname "LICENSE*" ! -iname "LICENCE*" \
+        ! -iname "CHANGELOG*" ! -iname "*.md" ! -iname "*.txt" \
+        ! -iname "*.png"  ! -iname "*.jpg"  ! -iname "*.gif" \
+        ! -iname "*.pdf"  ! -iname "*.zip"  ! -iname "*.tar*" \
+        2>/dev/null | sort | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+
+    echo "unknown"
 }
 
 make_install_block() {
@@ -472,7 +496,20 @@ cat <<BLOCK
 TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_make_install() {
-    install -Dm755 "${main}" "\$TERMUX_PREFIX/bin/${pkg}"
+    local libdir="\$TERMUX_PREFIX/lib/${pkg}"
+    mkdir -p "\$libdir"
+
+    cp -r . "\$libdir/"
+
+    if [[ -f "\$libdir/${main}" ]]; then
+        chmod 0755 "\$libdir/${main}"
+        cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
+#!/data/data/com.termux/files/usr/bin/bash
+cd "/data/data/com.termux/files/usr/lib/${pkg}" || exit 1
+exec bash "/data/data/com.termux/files/usr/lib/${pkg}/${main}" "\$@"
+WRAPPER
+        chmod 0755 "\$TERMUX_PREFIX/bin/${pkg}"
+    fi
 }
 BLOCK
     ;;
@@ -584,84 +621,6 @@ termux_step_make_install() {
 exec php "\${PREFIX}/lib/${pkg}/${main}" "\$@"
 WRAPPER
     chmod 0755 "\$TERMUX_PREFIX/bin/${pkg}"
-}
-BLOCK
-    ;;
-
-
-    powershell)
-cat <<BLOCK
-TERMUX_PKG_DEPENDS="powershell"
-TERMUX_PKG_BUILD_IN_SRC=true
-
-termux_step_make_install() {
-    local moddir="\$TERMUX_PREFIX/lib/${pkg}"
-    mkdir -p "\$moddir"
-    cp -r . "\$moddir/"
-
-    mkdir -p "\$TERMUX_PREFIX/bin"
-    cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
-#!/data/data/com.termux/files/usr/bin/bash
-if command -v pwsh >/dev/null 2>&1; then
-    exec pwsh -NoProfile -ExecutionPolicy Bypass \
-        -Command "Import-Module '/data/data/com.termux/files/usr/lib/${pkg}/${main}'; Write-Host 'Module ${pkg} loaded. Use: Import-Module /data/data/com.termux/files/usr/lib/${pkg}/${main}'" "\$@"
-else
-    echo "PowerShell (pwsh) is required to run ${pkg}."
-    echo "Install with:  pkg install powershell"
-    echo "Then import:   Import-Module /data/data/com.termux/files/usr/lib/${pkg}/${main}"
-    exit 1
-fi
-WRAPPER
-    chmod 0755 "\$TERMUX_PREFIX/bin/${pkg}"
-}
-BLOCK
-    ;;
-
-    csharp)
-cat <<BLOCK
-
-termux_step_make_install() {
-    echo "⚠️ C# / .NET project — requires dotnet SDK to compile"
-    echo "Install: pkg install dotnet-sdk"
-    if ls *.csproj >/dev/null 2>&1 || ls *.sln >/dev/null 2>&1; then
-        dotnet build -c Release -o "\$TERMUX_PREFIX/lib/${pkg}" 2>/dev/null || {
-            echo "dotnet build failed — manual compilation required"
-            mkdir -p "\$TERMUX_PREFIX/lib/${pkg}"
-            cp -r . "\$TERMUX_PREFIX/lib/${pkg}/"
-        }
-    else
-        mkdir -p "\$TERMUX_PREFIX/lib/${pkg}"
-        cp -r . "\$TERMUX_PREFIX/lib/${pkg}/"
-    fi
-}
-BLOCK
-    ;;
-
-    java|kotlin)
-cat <<BLOCK
-
-termux_step_make_install() {
-    echo "⚠️ Java/Kotlin project — requires JDK/Gradle to compile"
-    echo "Install: pkg install openjdk-17"
-    if [[ -f gradlew ]]; then
-        chmod +x gradlew
-        ./gradlew build 2>/dev/null || {
-            echo "Gradle build failed — manual compilation required"
-        }
-    fi
-    mkdir -p "\$TERMUX_PREFIX/lib/${pkg}"
-    cp -r . "\$TERMUX_PREFIX/lib/${pkg}/"
-}
-BLOCK
-    ;;
-
-    swift)
-cat <<BLOCK
-
-termux_step_make_install() {
-    echo "⚠️ Swift project — not supported on Termux (no Swift compiler available)"
-    mkdir -p "\$TERMUX_PREFIX/lib/${pkg}"
-    cp -r . "\$TERMUX_PREFIX/lib/${pkg}/"
 }
 BLOCK
     ;;
@@ -806,29 +765,6 @@ step "Auto-detection"
 INSTALL_METHOD=$(detect_method "$SRC")
 ok "Build method : ${W}${INSTALL_METHOD}${N}"
 
-case "$INSTALL_METHOD" in
-    powershell)
-        warn "PowerShell project detected (.ps1/.psm1)"
-        warn "Requires: ${W}pkg install powershell${N}  (if not already installed)"
-        info "Files will be installed to lib/${PKG_NAME}/ with a pwsh wrapper in bin/"
-        ;;
-    csharp)
-        warn "C# / .NET project detected — requires ${W}dotnet-sdk${N} to compile"
-        warn "Install with: pkg install dotnet-sdk"
-        ;;
-    java|kotlin)
-        warn "Java/Kotlin project detected — requires ${W}openjdk-17${N} to compile"
-        warn "Install with: pkg install openjdk-17"
-        ;;
-    swift)
-        warn "Swift project detected — Swift compiler is ${R}NOT available${N} on Termux/Android"
-        warn "This package cannot be compiled or run on this device"
-        ;;
-    unknown)
-        warn "Could not detect build system — termux_step_make_install() will need manual editing"
-        ;;
-esac
-
 MAIN_FILE=$(detect_entrypoint "$SRC" "$PKG_NAME")
 ok "Entrypoint   : ${W}${MAIN_FILE}${N}"
 
@@ -877,10 +813,6 @@ case "$INSTALL_METHOD" in
     perl)       ALL_DEPS="perl" ;;
     lua)        ALL_DEPS="lua54" ;;
     php)        ALL_DEPS="php" ;;
-    powershell) ALL_DEPS="powershell" ;;
-    csharp)     ALL_DEPS="" ;;
-    java|kotlin) ALL_DEPS="" ;;
-    swift)      ALL_DEPS="" ;;
     shell|make|autotools|unknown) ALL_DEPS="${DEPS_SHELL_PKGS:-}" ;;
     *)          ALL_DEPS="" ;;
 esac
