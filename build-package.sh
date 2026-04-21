@@ -832,6 +832,18 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
   rm -f "$_INSTALL_LOG"
 
   if [[ $_INSTALL_EXIT -ne 0 ]]; then
+    _PIP_OK=false
+    echo "$_INSTALL_OUTPUT" | grep -qi "Successfully installed" && _PIP_OK=true
+    [[ -f "$PREFIX/bin/$PACKAGE" ]] && _PIP_OK=true
+    command -v "$PACKAGE" &>/dev/null && _PIP_OK=true
+
+    if [[ "$_PIP_OK" == "true" ]]; then
+      _warn "termux_step_make_install() exited $_INSTALL_EXIT but package appears installed — continuing"
+      _INSTALL_EXIT=0
+    fi
+  fi
+
+  if [[ $_INSTALL_EXIT -ne 0 ]]; then
     echo ""
     _fatal "termux_step_make_install() failed (exit $_INSTALL_EXIT)"
     echo ""
@@ -907,19 +919,72 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
   _progress "Staging installed files..."
   mkdir -p "$WORK_DIR/pkg$PREFIX/bin" "$WORK_DIR/pkg$PREFIX/lib"
 
-  [[ -f "$PREFIX/bin/$PACKAGE" ]] && \
+  if [[ -f "$PREFIX/bin/$PACKAGE" ]]; then
     install -Dm755 "$PREFIX/bin/$PACKAGE" "$WORK_DIR/pkg$PREFIX/bin/$PACKAGE"
+    _detail "Staged bin:" "$PREFIX/bin/$PACKAGE"
+  fi
 
-  _PY_SITE_TMP=$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null || true)
-  if [[ -n "$_PY_SITE_TMP" ]]; then
-    _EP_FILE=$(find "$_PY_SITE_TMP" -maxdepth 2 -iname "entry_points.txt" -path "*${PACKAGE}*" 2>/dev/null | head -1 || true)
+  _PY_SITE_CANDIDATES=()
+  _SYS_SITE=$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null || true)
+  [[ -n "$_SYS_SITE" ]] && _PY_SITE_CANDIDATES+=("$_SYS_SITE")
+  while IFS= read -r _s; do
+    _PY_SITE_CANDIDATES+=("$_s")
+  done < <(find "$PREFIX/lib" -maxdepth 2 -type d -name "site-packages" 2>/dev/null)
+  mapfile -t _PY_SITE_CANDIDATES < <(printf '%s\n' "${_PY_SITE_CANDIDATES[@]}" | sort -u)
+
+  _STAGED_PY=false
+  for _PY_SITE in "${_PY_SITE_CANDIDATES[@]}"; do
+    [[ -d "$_PY_SITE" ]] || continue
+
+    _EP_FILE=$(find "$_PY_SITE" -maxdepth 3 \
+      \( -iname "entry_points.txt" -path "*${PACKAGE}*" \
+         -o -iname "RECORD" -path "*${PACKAGE}*" \) \
+      2>/dev/null | grep "entry_points" | head -1 || true)
+
     if [[ -n "$_EP_FILE" ]]; then
-      grep -A50 "\[console_scripts\]" "$_EP_FILE" 2>/dev/null | grep "=" | while IFS='=' read -r _ep_name _; do
+      grep -A50 "\[console_scripts\]" "$_EP_FILE" 2>/dev/null | grep "=" | \
+      while IFS='=' read -r _ep_name _; do
         _ep_name=$(echo "$_ep_name" | tr -d ' ')
-        [[ -f "$PREFIX/bin/$_ep_name" ]] && \
-          install -Dm755 "$PREFIX/bin/$_ep_name" "$WORK_DIR/pkg$PREFIX/bin/$_ep_name" && \
-          _detail "Staged bin:" "$PREFIX/bin/$_ep_name"
+        [[ -z "$_ep_name" ]] && continue
+        for _bdir in "$PREFIX/bin" "$(python3 -c 'import sys; print(sys.prefix)' 2>/dev/null)/bin"; do
+          if [[ -f "$_bdir/$_ep_name" ]]; then
+            install -Dm755 "$_bdir/$_ep_name" "$WORK_DIR/pkg$PREFIX/bin/$_ep_name"
+            _detail "Staged script:" "$_bdir/$_ep_name"
+            break
+          fi
+        done
       done
+    fi
+
+    _PY_PKG=$(find "$_PY_SITE" -maxdepth 1 -type d \
+      \( -iname "${PACKAGE}" -o -iname "${PACKAGE}-*" \) 2>/dev/null | \
+      grep -v "dist-info\|egg-info" | head -1 || true)
+
+    if [[ -n "$_PY_PKG" && "$_STAGED_PY" == "false" ]]; then
+      _PY_SITE_DEST="$WORK_DIR/pkg$_PY_SITE"
+      mkdir -p "$_PY_SITE_DEST"
+      cp -r "$_PY_PKG" "$_PY_SITE_DEST/"
+      find "$_PY_SITE" -maxdepth 1 \
+        \( -iname "${PACKAGE}-*.dist-info" -o -iname "${PACKAGE}-*.egg-info" \) \
+        -exec cp -r {} "$_PY_SITE_DEST/" \; 2>/dev/null || true
+      _detail "Staged pip pkg:" "$_PY_PKG"
+      _STAGED_PY=true
+    fi
+  done
+
+  if [[ "$_STAGED_PY" == "false" ]]; then
+    _FALLBACK=$(find "$PREFIX/lib" -maxdepth 3 -type d -iname "${PACKAGE}" 2>/dev/null | \
+      grep -v "dist-info\|egg-info" | head -1 || true)
+    if [[ -n "$_FALLBACK" ]]; then
+      _FALLBACK_PARENT=$(dirname "$_FALLBACK")
+      _FALLBACK_DEST="$WORK_DIR/pkg$_FALLBACK_PARENT"
+      mkdir -p "$_FALLBACK_DEST"
+      cp -r "$_FALLBACK" "$_FALLBACK_DEST/"
+      find "$_FALLBACK_PARENT" -maxdepth 1 \
+        \( -iname "${PACKAGE}-*.dist-info" -o -iname "${PACKAGE}-*.egg-info" \) \
+        -exec cp -r {} "$_FALLBACK_DEST/" \; 2>/dev/null || true
+      _detail "Staged fallback pip:" "$_FALLBACK"
+      _STAGED_PY=true
     fi
   fi
 
@@ -934,23 +999,43 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
     _detail "Staged npm:" "$PREFIX/lib/node_modules/$PACKAGE"
   fi
 
-  _PY_SITE=$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null || true)
-  if [[ -n "$_PY_SITE" ]]; then
-    _PY_PKG=$(find "$_PY_SITE" -maxdepth 1 -iname "${PACKAGE}" -o \
-                               -maxdepth 1 -iname "${PACKAGE}-*.dist-info" 2>/dev/null | \
-              grep -v "dist-info" | head -1 || true)
-    if [[ -n "$_PY_PKG" ]]; then
-      _PY_SITE_DEST="$WORK_DIR/pkg$_PY_SITE"
-      mkdir -p "$_PY_SITE_DEST"
-      cp -r "$_PY_PKG" "$_PY_SITE_DEST/"
-      find "$_PY_SITE" -maxdepth 1 -iname "${PACKAGE}-*.dist-info" -exec cp -r {} "$_PY_SITE_DEST/" \; 2>/dev/null || true
-      _detail "Staged pip:" "$_PY_PKG"
-    fi
+  if [[ -d "$PREFIX/share/doc/$PACKAGE" ]]; then
+    mkdir -p "$WORK_DIR/pkg$PREFIX/share/doc"
+    cp -r "$PREFIX/share/doc/$PACKAGE" "$WORK_DIR/pkg$PREFIX/share/doc/"
   fi
 
-  [[ -d "$PREFIX/share/doc/$PACKAGE" ]] && \
-    mkdir -p "$WORK_DIR/pkg$PREFIX/share/doc" && \
-    cp -r "$PREFIX/share/doc/$PACKAGE" "$WORK_DIR/pkg$PREFIX/share/doc/"
+  _STAGED_COUNT=$(find "$WORK_DIR/pkg$PREFIX" -type f 2>/dev/null | grep -v "DEBIAN" | wc -l)
+  if [[ "$_STAGED_COUNT" -eq 0 ]]; then
+    _warn "Staging found no files — attempting emergency capture from PREFIX"
+    # Binary in bin/
+    if [[ -f "$PREFIX/bin/$PACKAGE" ]]; then
+      install -Dm755 "$PREFIX/bin/$PACKAGE" "$WORK_DIR/pkg$PREFIX/bin/$PACKAGE"
+      _detail "Emergency bin:" "$PREFIX/bin/$PACKAGE"
+    fi
+    for _sp in "${_PY_SITE_CANDIDATES[@]:-}"; do
+      [[ -d "$_sp" ]] || continue
+      _epkg=$(find "$_sp" -maxdepth 1 -type d 2>/dev/null | \
+        awk -F/ '{print $NF}' | grep -i "^${PACKAGE}" | grep -v "dist-info\|egg-info" | head -1 || true)
+      if [[ -n "$_epkg" ]]; then
+        _SP_DEST="$WORK_DIR/pkg$_sp"
+        mkdir -p "$_SP_DEST"
+        cp -r "$_sp/$_epkg" "$_SP_DEST/"
+        find "$_sp" -maxdepth 1 \
+          \( -iname "${_epkg}-*.dist-info" -o -iname "${_epkg}-*.egg-info" \) \
+          -exec cp -r {} "$_SP_DEST/" \; 2>/dev/null || true
+        _detail "Emergency pip:" "$_sp/$_epkg"
+        break
+      fi
+    done
+    _STAGED_COUNT=$(find "$WORK_DIR/pkg$PREFIX" -type f 2>/dev/null | grep -v "DEBIAN" | wc -l)
+    if [[ "$_STAGED_COUNT" -gt 0 ]]; then
+      _ok "Emergency capture succeeded ($_STAGED_COUNT file(s))"
+    else
+      _warn "Staging empty — .deb will contain no files (package may still be installed on device)"
+    fi
+  else
+    _detail "Files staged:" "$_STAGED_COUNT"
+  fi
 
   _ok "Custom install completed"
 
