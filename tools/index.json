@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-20T03:18:28.704002+00:00",
+  "generated_at": "2026-04-21T01:21:19.283477+00:00",
   "total": 43,
   "packages": [
     {
@@ -18,7 +18,8 @@
       "sha256": "1f35c47b0c6d924261d096663d16b03d489f488fcc38c74e4fe87b45a330b7cf",
       "platform_independent": false,
       "depends": [
-        "nodejs"
+        "nodejs",
+        "fzf"
       ]
     },
     {
