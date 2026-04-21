@@ -26,10 +26,10 @@ step()  { echo -e "\n${B}:: $*${N}\n${B}$(printf '%.0s-' {1..79})${N}"; }
 banner() {
 cat <<'EOF'
 
-══════════════════════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════════════════════
         Termux Build Init  -  Auto Create and Build package
               github.com/djunekz/termux-app-store
-══════════════════════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════════════════════
 EOF
 }
 
@@ -85,6 +85,34 @@ map_python_dep() {
         syslog|tabnanny|tarfile|telnetlib|termios|test|timeit|token|\
         tokenize|trace|tracemalloc|tty|turtle|turtledemo|types|uu|venv|\
         wave|weakref|webbrowser|wsgiref|xdrlib|zipapp|zipimport) return ;;
+        StringIO|cStringIO|ConfigParser|HTMLParser|httplib|urllib2|urlparse|\
+        cookielib|Cookie|Queue|sets|repr|new|md5|sha|sgmllib|htmlentitydefs|\
+        robotparser|xmlrpclib|DocXMLRPCServer|BaseHTTPServer|CGIHTTPServer|\
+        SimpleHTTPServer|UserDict|UserList|UserString|exceptions|thread|\
+        dummy_thread|copy_reg|itertools|cPickle|cProfile|popen2|dircache|\
+        commands|compiler|fpformat|ihooks|imputil|linuxaudiodev|mhlib|\
+        mutex|posixfile|rexec|Bastion|statcache|statvfs|sunaudiodev|toaiff|\
+        whichdb|gopherlib|mimify|multifile|pipes|sre) return ;;
+        win32api|win32con|win32gui|win32process|win32security|win32service|\
+        win32event|win32file|win32net|win32print|win32clipboard|win32com|\
+        win32console|win32cred|win32crypt|win32evtlog|win32help|win32inet|\
+        win32job|win32lz|win32memory|win32pdhutil|win32pipe|win32ras|\
+        win32rcparser|win32reg|win32security|win32transaction|win32ts|\
+        winerror|winreg|_winreg|winnt|winsound|msvcrt|_winapi|nt|\
+        msilib|winperf|wmi|comtypes|pythoncom|pywintypes|win32con|\
+        vidcap|pyHook|pywinauto|pywin32) return ;;
+        AppKit|Cocoa|Foundation|CoreData|CoreFoundation|CoreGraphics|\
+        CoreLocation|CoreMotion|CoreText|CoreVideo|GameKit|MapKit|\
+        MediaPlayer|MessageUI|QuartzCore|SceneKit|SpriteKit|StoreKit|\
+        UIKit|WatchKit|WebKit|AppKit|Quartz|CoreServices|LaunchServices|\
+        SystemConfiguration|IOKit|DiskArbitration|CFNetwork|Security|\
+        PyObjC|PyObjCTools|objc|AddressBook|CalendarStore|Collaboration|\
+        EventKit|ExceptionHandling|LatentSemanticMapping|OSServices|\
+        PreferencePanes|ScreenSaver|ServiceManagement|XgridFoundation) return ;;
+        st_*|stitch_*|creddump|addrspace|newobj|obj|rawreg|payload_setup|\
+        stitch_gen|stitch_help|stitch_lib|stitch_lnxshell|stitch_osxshell|\
+        stitch_pyld_config|stitch_utils|stitch_winshell) return ;;
+        distutils) return ;;
     esac
 
     case "$mod" in
@@ -358,53 +386,19 @@ detect_method() {
 detect_entrypoint() {
     local src="$1"
     local pkg="$2"
-    local f
 
+    local f
     f=$(grep -rl '__main__' "$src"/*.py 2>/dev/null | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
     [[ -f "$src/$pkg.py" ]] && { echo "$pkg.py"; return; }
     f=$(ls "$src"/*.py 2>/dev/null | grep -vi 'setup\|conf\|config\|test' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
-    if [[ -f "$src/$pkg" ]]; then
-        local _ft
-        _ft=$(file -b "$src/$pkg" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-        # Accept if it's a script/text/ELF, reject if it's a doc/image/archive
-        if echo "$_ft" | grep -qiE 'script|text|shell|elf|executable|ascii|unicode'; then
-            echo "$pkg"; return
-        fi
-    fi
-
     [[ -f "$src/$pkg.sh" ]] && { echo "$pkg.sh"; return; }
     f=$(ls "$src"/*.sh 2>/dev/null | grep -vi 'setup\|install\|config\|test' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
-    f=$(ls "$src"/*.sh 2>/dev/null | head -n1 || true)
-    [[ -n "$f" ]] && { basename "$f"; return; }
 
-    f=$(find "$src" -maxdepth 1 -type f -name "$pkg" -perm /111 2>/dev/null | head -n1 || true)
-    [[ -n "$f" ]] && { basename "$f"; return; }
-    f=$(find "$src" -maxdepth 1 -type f -perm /111 \
-        ! -iname "*.md" ! -iname "*.txt" ! -iname "*.png" \
-        ! -iname "*.jpg" ! -iname "*.gif" ! -iname "LICENSE*" \
-        2>/dev/null | head -n1 || true)
-    [[ -n "$f" ]] && { basename "$f"; return; }
-
-    [[ -f "$src/$pkg.psm1" ]] && { echo "$pkg.psm1"; return; }
-    [[ -f "$src/$pkg.psd1" ]] && { echo "$pkg.psd1"; return; }
-    f=$(ls "$src"/*.psm1 2>/dev/null | head -n1 || true)
-    [[ -n "$f" ]] && { basename "$f"; return; }
-    f=$(ls "$src"/*.ps1 2>/dev/null | grep -vi 'test\|install\|setup' | head -n1 || true)
-    [[ -n "$f" ]] && { basename "$f"; return; }
-
-    f=$(find "$src" -maxdepth 1 -type f \
-        ! -iname "README*" ! -iname "LICENSE*" ! -iname "LICENCE*" \
-        ! -iname "CHANGELOG*" ! -iname "*.md" ! -iname "*.txt" \
-        ! -iname "*.png"  ! -iname "*.jpg"  ! -iname "*.gif" \
-        ! -iname "*.pdf"  ! -iname "*.zip"  ! -iname "*.tar*" \
-        2>/dev/null | sort | head -n1 || true)
-    [[ -n "$f" ]] && { basename "$f"; return; }
-
-    echo "unknown"
+    ls "$src" | head -n1
 }
 
 make_install_block() {
@@ -454,6 +448,16 @@ ${pip_extra_cmd}
         fi
     done
 
+    if grep -rlE \
+        'print [^(]|^\s*print$|except \w+,\s*\w+:|^from __future__ import|basestring|xrange|raw_input' \
+        "\$libdir" --include="*.py" 2>/dev/null | grep -q .; then
+        echo "  [2to3] Python 2 syntax detected — running 2to3 auto-conversion..."
+        if command -v 2to3 >/dev/null 2>&1; then
+            2to3 --write --nobackups -n "\$libdir" 2>/dev/null || true
+            echo "  [2to3] Conversion complete"
+        fi
+    fi
+
 ${installer_cmd}
 }
 BLOCK
@@ -479,6 +483,44 @@ ${pip_extra_cmd}
     done
 
 ${installer_cmd}
+    _PY2_DETECTED=false
+    if grep -rlE \
+        'print [^(]|^\s*print$|except \w+,\s*\w+:|^from __future__ import|unicode_literals|basestring|xrange|raw_input|has_key\(\|iteritems\(\|itervalues\(\|iterkeys\(' \
+        "\$libdir" --include="*.py" 2>/dev/null | grep -q .; then
+        _PY2_DETECTED=true
+        echo "  [2to3] Python 2 syntax detected — running 2to3 auto-conversion..."
+    fi
+
+    if [[ "\$_PY2_DETECTED" == "true" ]]; then
+        if command -v 2to3 >/dev/null 2>&1; then
+            2to3 --write --nobackups -n "\$libdir" 2>/dev/null && \
+                echo "  [2to3] Conversion complete" || \
+                echo "  [2to3] Partial conversion (some files may still have issues)"
+        else
+            echo "  [2to3] Not found — installing python-tools..."
+            pip install --quiet 2to3 --break-system-packages 2>/dev/null || true
+            if command -v 2to3 >/dev/null 2>&1; then
+                2to3 --write --nobackups -n "\$libdir" 2>/dev/null || true
+                echo "  [2to3] Conversion complete"
+            else
+                echo "  [2to3] WARNING: Could not auto-convert Python 2 syntax"
+                echo "         Run manually: 2to3 --write --nobackups -n \$libdir"
+            fi
+        fi
+    fi
+
+    find "\$libdir" -name "*.py" -type f 2>/dev/null | while read -r _pyf; do
+        if grep -qE '^import (win32|winreg|_winreg|AppKit|Cocoa|Foundation|pythoncom|pywintypes)' "\$_pyf" 2>/dev/null; then
+            sed -i -E \
+                's/^(import (win32[a-zA-Z]*|winreg|_winreg|AppKit|Cocoa|Foundation|PyObjC[a-zA-Z]*|pythoncom|pywintypes|wmi|comtypes)[^\n]*)/try:\n    \1\nexcept ImportError:\n    pass/' \
+                "\$_pyf" 2>/dev/null || true
+        fi
+        if grep -qE '^from (win32|winreg|_winreg|AppKit|Cocoa|Foundation|pythoncom|pywintypes)' "\$_pyf" 2>/dev/null; then
+            sed -i -E \
+                's/^(from (win32[a-zA-Z]*|winreg|_winreg|AppKit|Cocoa|Foundation|PyObjC[a-zA-Z]*|pythoncom|pywintypes|wmi|comtypes) import[^\n]*)/try:\n    \1\nexcept ImportError:\n    pass/' \
+                "\$_pyf" 2>/dev/null || true
+        fi
+    done
 
     cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
 #!/usr/bin/env bash
@@ -496,20 +538,7 @@ cat <<BLOCK
 TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_make_install() {
-    local libdir="\$TERMUX_PREFIX/lib/${pkg}"
-    mkdir -p "\$libdir"
-
-    cp -r . "\$libdir/"
-
-    if [[ -f "\$libdir/${main}" ]]; then
-        chmod 0755 "\$libdir/${main}"
-        cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
-#!/data/data/com.termux/files/usr/bin/bash
-cd "/data/data/com.termux/files/usr/lib/${pkg}" || exit 1
-exec bash "/data/data/com.termux/files/usr/lib/${pkg}/${main}" "\$@"
-WRAPPER
-        chmod 0755 "\$TERMUX_PREFIX/bin/${pkg}"
-    fi
+    install -Dm755 "${main}" "\$TERMUX_PREFIX/bin/${pkg}"
 }
 BLOCK
     ;;
