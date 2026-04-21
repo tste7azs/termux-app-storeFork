@@ -29,6 +29,9 @@ and this project adheres to semantic versioning.
 - Package `termux-ai` v1.0.0 - Interactive AI tool for Termux with 10+ providers and 50+ image models ✨
 - Package `userfinder` v1.0.0 - userfinder — auto-packaged by termux-build-init
 - Package `termux-sync` v0.1.0 - OpenSource Backup and restore your entire Termux environment across devices.
+- Package `lalin` v1.0.0 - this script automatically install any package for pentest with uptodate tools , and lazy command for run the tools like lazynmap , install another and update to new #actually for lazy people hahaha #and Lalin is remake the lazykali with fixed bugs , added new features and uptodate tools . Its compatible with the latest release of Kali (Rolling)
+- Package `myserver` v1.0.0 - myserver — auto-packaged by termux-build-init
+- Package `parsero` v1.0.0 - Parsero | Robots.txt audit tool
 
 ### Changed
 - Package `bashxt` v2.2 - Updated metadata
