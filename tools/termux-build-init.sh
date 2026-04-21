@@ -438,6 +438,20 @@ ${pip_extra_cmd}
     mkdir -p "\$libdir"
     cp -r . "\$libdir/"
 
+    find "\$libdir" -name "*.py" -type f 2>/dev/null | while read -r _pyf; do
+        if python3 -c "
+import ast, sys
+try:
+    ast.parse(open(sys.argv[1]).read())
+except TabError:
+    sys.exit(1)
+" "\$_pyf" 2>/dev/null; then
+            :  # syntax ok
+        else
+            expand -t 4 "\$_pyf" > "\${_pyf}.fixed" 2>/dev/null && mv "\${_pyf}.fixed" "\$_pyf" || true
+        fi
+    done
+
     find "\$libdir" -type d | while read -r _dir; do
         if ls "\$_dir"/*.py &>/dev/null 2>&1 && [[ ! -f "\$_dir/__init__.py" ]]; then
             touch "\$_dir/__init__.py"
