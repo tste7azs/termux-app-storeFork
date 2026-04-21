@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-21T01:21:19.283477+00:00",
-  "total": 43,
+  "generated_at": "2026-04-21T01:50:49.218310+00:00",
+  "total": 46,
   "packages": [
     {
       "package": "ani-cli",
@@ -439,6 +439,20 @@
       ]
     },
     {
+      "package": "lalin",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "this script automatically install any package for pentest with uptodate tools , and lazy command for run the tools like lazynmap , install another and update to new #actually for lazy people hahaha #and Lalin is remake the lazykali with fixed bugs , added new features and uptodate tools . It's compatible with the latest release of Kali (Rolling)",
+      "homepage": "https://github.com/Screetsec/LALIN",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Screetsec/LALIN/archive/refs/heads/master.tar.gz",
+      "sha256": "f6d8f683a7cfea3ea7da10562976efdedd380bcbb61108702342564acbcf644e",
+      "platform_independent": false
+    },
+    {
       "package": "lazymux",
       "version": "1.0.0",
       "maintainer": "@termux-app-store",
@@ -471,6 +485,45 @@
       "srcurl": "https://github.com/iawia002/lux/releases/download/v${TERMUX_PKG_VERSION}/lux_${TERMUX_PKG_VERSION}_Linux_arm64.tar.gz",
       "sha256": "479b09290b8ddda43c994ec5685649eb4635f4bd24ff24e494eddaae473879d7",
       "platform_independent": false
+    },
+    {
+      "package": "myserver",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "myserver — auto-packaged by termux-build-init",
+      "homepage": "https://github.com/Rajkumrdusad/MyServer",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Rajkumrdusad/MyServer/archive/refs/heads/master.tar.gz",
+      "sha256": "459a6caf18c8c70558a988b88c75be2d8512a165a034e3782a661967d26a9a43",
+      "platform_independent": false,
+      "depends": [
+        "php",
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "parsero",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Parsero | Robots.txt audit tool",
+      "homepage": "http://www.behindthefirewalls.com/",
+      "license": "GPL-2.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/behindthefirewalls/Parsero/archive/refs/heads/master.tar.gz",
+      "sha256": "bc34afddf5b902ae8fb64c5e3ab2007f651a0b9fe42d1169fabacfc7c750ed44",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
     },
     {
       "package": "pmcli",
