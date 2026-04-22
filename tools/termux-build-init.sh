@@ -84,7 +84,12 @@ map_python_dep() {
         sndhdr|spwd|statistics|stringprep|sunau|symtable|sysconfig|\
         syslog|tabnanny|tarfile|telnetlib|termios|test|timeit|token|\
         tokenize|trace|tracemalloc|tty|turtle|turtledemo|types|uu|venv|\
-        wave|weakref|webbrowser|wsgiref|xdrlib|zipapp|zipimport) return ;;
+        wave|weakref|webbrowser|wsgiref|xdrlib|zipapp|zipimport|\
+        urllib2|httplib|httplib2|urlparse|cookielib|Cookie|\
+        ConfigParser|HTMLParser|Queue|StringIO|BytesIO|\
+        BaseHTTPServer|SimpleHTTPServer|SocketServer|\
+        xmlrpclib|repr|sets|UserDict|UserList|UserString|\
+        commands|exceptions|__future__|__builtin__|xmllib) return ;;
     esac
 
     case "$mod" in
@@ -256,6 +261,11 @@ scan_python_imports() {
     mapfile -t pyfiles < <(find "$src" -maxdepth 3 -name "*.py" 2>/dev/null)
     [[ ${#pyfiles[@]} -eq 0 ]] && echo "" && return
 
+    local local_names
+    local_names=$(find "$src" -maxdepth 2 \( -name "*.py" -o -type d \) 2>/dev/null \
+        | xargs -I{} basename {} 2>/dev/null \
+        | sed 's/\.py$//' | sort -u | tr '\n' '|' | sed 's/|$//')
+
     local imports
     imports=$(cat "${pyfiles[@]}" 2>/dev/null \
         | sed -n 's/^import  *\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p;
@@ -263,6 +273,9 @@ scan_python_imports() {
         | sort -u || true)
 
     for mod in $imports; do
+        if [[ -n "$local_names" ]] && echo "$mod" | grep -qE "^(${local_names})$"; then
+            continue
+        fi
         local mapped; mapped=$(map_python_dep "$mod")
         [[ -n "$mapped" ]] && deps+=("$mapped")
     done
@@ -414,6 +427,31 @@ scan_perl_deps() {
     printf '%s\n' "${deps[@]}" | sort -u | xargs
 }
 
+detect_python_version() {
+    local src="$1"
+    local main="$2"
+
+    local shebang
+    shebang=$(head -n1 "$src/$main" 2>/dev/null || true)
+    if echo "$shebang" | grep -qE 'python2|python2\.[0-9]'; then
+        echo "2"; return
+    fi
+
+    local pyfiles
+    mapfile -t pyfiles < <(find "$src" -maxdepth 2 -name "*.py" 2>/dev/null)
+    if [[ ${#pyfiles[@]} -gt 0 ]]; then
+        if grep -lE '^[[:space:]]*print [^(]' "${pyfiles[@]}" 2>/dev/null | grep -q .; then
+            echo "2"; return
+        fi
+        if grep -hE '^import (urllib2|httplib|ConfigParser|urlparse|cookielib)' \
+                "${pyfiles[@]}" 2>/dev/null | grep -q .; then
+            echo "2"; return
+        fi
+    fi
+
+    echo "3"
+}
+
 detect_installer() {
     local src="$1"
     for candidate in install_Termux.sh install_termux.sh Install_Termux.sh setup_termux.sh install.sh Install.sh setup.sh Setup.sh; do
@@ -442,6 +480,10 @@ detect_method() {
     elif ls "$src"/*.kt &>/dev/null 2>&1;  then echo "kotlin"
     elif ls "$src"/*.swift &>/dev/null 2>&1; then echo "swift"
     elif ls "$src"/*.c "$src"/*.cpp &>/dev/null 2>&1; then echo "make"
+    elif find "$src" -maxdepth 1 -type f ! -name "*.*" -perm /111 2>/dev/null | \
+         xargs -I{} head -n1 {} 2>/dev/null | grep -qE '^#!.*(bash|sh)\b'; then echo "shell"
+    elif find "$src" -maxdepth 1 -type f ! -name "*.*" 2>/dev/null | \
+         xargs -I{} head -n1 {} 2>/dev/null | grep -qE '^#!.*(bash|sh)\b'; then echo "shell"
     else echo "unknown"
     fi
 }
@@ -457,7 +499,6 @@ detect_entrypoint() {
     f=$(ls "$src"/*.py 2>/dev/null | grep -vi 'setup\|conf\|config\|test' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
-    # Perl: cari file .pl utama (hindari helper/test)
     [[ -f "$src/$pkg.pl" ]] && { echo "$pkg.pl"; return; }
     f=$(ls "$src"/*.pl 2>/dev/null | grep -vi 'install\|setup\|update\|config\|test\|helper' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
@@ -466,17 +507,25 @@ detect_entrypoint() {
     f=$(ls "$src"/*.sh 2>/dev/null | grep -vi 'setup\|install\|config\|test' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
-    # PHP: cari file utama (hindari config/helper)
     [[ -f "$src/$pkg.php" ]] && { echo "$pkg.php"; return; }
     f=$(ls "$src"/*.php 2>/dev/null | grep -vi 'config\|conf\|var\|function\|helper\|class\|Dockerfile' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
-    # Go: cari file .go utama
     [[ -f "$src/$pkg.go" ]] && { echo "$pkg.go"; return; }
     f=$(ls "$src"/*.go 2>/dev/null | grep -vi '_test\|setup\|config' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
-    ls "$src" | head -n1
+    if [[ -f "$src/$pkg" ]]; then
+        echo "$pkg"; return
+    fi
+    f=$(find "$src" -maxdepth 1 -type f ! -name "*.*" 2>/dev/null \
+        | while IFS= read -r _ef; do
+            _shebang=$(head -n1 "$_ef" 2>/dev/null || true)
+            echo "$_shebang" | grep -qE '^#!.*(bash|sh|python|perl|ruby)\b' && echo "$_ef"
+          done | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+
+    ls "$src" | grep -v '\.md$\|\.txt$\|LICENSE\|README\|\.rd$' | head -n1
 }
 
 make_install_block() {
@@ -487,6 +536,7 @@ make_install_block() {
     local pip_extra="${5:-}"
     local installer="${6:-}"
     local cpan_mods="${7:-}"
+    local python_ver="${8:-3}"
 
     local pip_extra_cmd=""
     if [[ -n "$pip_extra" ]]; then
@@ -556,7 +606,7 @@ ${installer_cmd}
     cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
 #!/usr/bin/env bash
 cd "\${TERMUX_PREFIX}/lib/${pkg}" || exit 1
-exec python3 "\${TERMUX_PREFIX}/lib/${pkg}/${main}" "\$@"
+exec python${python_ver} "\${TERMUX_PREFIX}/lib/${pkg}/${main}" "\$@"
 WRAPPER
     sed -i "s|\\\${TERMUX_PREFIX}|/data/data/com.termux/files/usr|g" "\$TERMUX_PREFIX/bin/${pkg}"
     chmod 0755 "\$TERMUX_PREFIX/bin/${pkg}"
@@ -846,7 +896,7 @@ step "Downloading & analyzing source"
 info "URL: $SRCURL"
 
 if ! curl -sf --head "$SRCURL" -o /dev/null 2>/dev/null; then
-    fail "Source URL is not accessible: $SRCURL"$'\n'"       Cek nama branch atau pastikan repo tidak private."
+    fail "Source URL is not accessible: $SRCURL"$'\n'"  [ INFO ]  Cek nama branch atau pastikan repo tidak private."
 fi
 
 TMP=$(mktemp -d)
@@ -881,6 +931,15 @@ if [[ -n "$INSTALLER_SCRIPT" ]]; then
     ok "Installer    : ${W}${INSTALLER_SCRIPT}${N} ${C}(will run post-copy)${N}"
 else
     info "Installer    : none detected"
+fi
+
+PYTHON_VERSION="3"
+if [[ "$INSTALL_METHOD" == "python-script" || "$INSTALL_METHOD" == "pip" ]]; then
+    PYTHON_VERSION=$(detect_python_version "$SRC" "$MAIN_FILE")
+    if [[ "$PYTHON_VERSION" == "2" ]]; then
+        warn "Python 2 syntax detected — will use ${W}python2${N} interpreter"
+        warn "Python 2 is EOL. Package may not work correctly on modern systems."
+    fi
 fi
 
 step "Dependency scan"
@@ -986,7 +1045,7 @@ read -rp "  Continue? [Y/n]: " _CONT
 
 step "Writing build.sh"
 
-INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED" "${PIP_ONLY_DEPS:-}" "${INSTALLER_SCRIPT:-}" "${DEPS_PERL_CPAN:-}")
+INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED" "${PIP_ONLY_DEPS:-}" "${INSTALLER_SCRIPT:-}" "${DEPS_PERL_CPAN:-}" "${PYTHON_VERSION:-3}")
 
 {
     printf 'TERMUX_PKG_HOMEPAGE=%s\n'          "$HOMEPAGE"
