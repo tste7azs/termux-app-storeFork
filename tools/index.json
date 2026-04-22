@@ -1,8 +1,8 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-21T02:51:40.367524+00:00",
-  "total": 46,
+  "generated_at": "2026-04-22T01:17:29.639562+00:00",
+  "total": 50,
   "packages": [
     {
       "package": "ani-cli",
@@ -576,6 +576,23 @@
       ]
     },
     {
+      "package": "red-hawk",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "All in one tool for Information Gathering, Vulnerability Scanning and Crawling. A must have tool for all penetration testers",
+      "homepage": "https://github.com/Tuhinshubhra/RED_HAWK",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Tuhinshubhra/RED_HAWK/archive/refs/heads/master.tar.gz",
+      "sha256": "5988892dcea9993e7388c41c1d98c284774fb27866c6ff61e53815ef04a07077",
+      "platform_independent": false,
+      "depends": [
+        "php"
+      ]
+    },
+    {
       "package": "sigit",
       "version": "2.0",
       "maintainer": "@termux-app-store",
@@ -588,6 +605,25 @@
       "srcurl": "https://api.github.com/repos/termuxhackers-id/SIGIT/tarball/${TERMUX_PKG_VERSION}-pre",
       "sha256": "2bfe129b478dc758133f6380dc5f1c27da8af2c3cfe7327e826d4f974e20c993",
       "platform_independent": false
+    },
+    {
+      "package": "sublist3r",
+      "version": "1.1",
+      "maintainer": "@termux-app-store",
+      "description": "Fast subdomains enumeration tool for penetration testers",
+      "homepage": "https://github.com/aboul3la/Sublist3r",
+      "license": "GPL-2.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/aboul3la/Sublist3r/archive/refs/tags/1.1.tar.gz",
+      "sha256": "7bb915954bb0db9a8f0a3be2a38bc77e932174be5e8d02c7d5dd4bc56ec30195",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
     },
     {
       "package": "tdoc",
@@ -657,6 +693,37 @@
         "python",
         "python-pip",
         "python-setuptools"
+      ]
+    },
+    {
+      "package": "termuxalpine",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Use TermuxAlpine.sh calling to install Alpine Linux in Termux on Android. This setup script will attempt to set Alpine Linux up in your Termux environment.",
+      "homepage": "https://github.com/Hax4us/TermuxAlpine",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Hax4us/TermuxAlpine/archive/refs/heads/master.tar.gz",
+      "sha256": "2dae317bcce989a909f171c1843db9479012bcbbb23cc8f729cc73ce4d8af6fa",
+      "platform_independent": false
+    },
+    {
+      "package": "the-eye",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Simple security surveillance script for linux distributions.",
+      "homepage": "https://github.com/EgeBalci/The-Eye",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/EgeBalci/The-Eye/archive/refs/heads/master.tar.gz",
+      "sha256": "a32f2b55436731b6347ef4c6ead5d9465e708414eda7323d0b4c63f29dde4765",
+      "platform_independent": false,
+      "depends": [
+        "golang"
       ]
     },
     {
