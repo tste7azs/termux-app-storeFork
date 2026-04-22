@@ -26,10 +26,10 @@ step()  { echo -e "\n${B}:: $*${N}\n${B}$(printf '%.0s-' {1..79})${N}"; }
 banner() {
 cat <<'EOF'
 
-══════════════════════════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════════════════
         Termux Build Init  -  Auto Create and Build package
               github.com/djunekz/termux-app-store
-══════════════════════════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════════════════
 EOF
 }
 
@@ -85,34 +85,6 @@ map_python_dep() {
         syslog|tabnanny|tarfile|telnetlib|termios|test|timeit|token|\
         tokenize|trace|tracemalloc|tty|turtle|turtledemo|types|uu|venv|\
         wave|weakref|webbrowser|wsgiref|xdrlib|zipapp|zipimport) return ;;
-        StringIO|cStringIO|ConfigParser|HTMLParser|httplib|urllib2|urlparse|\
-        cookielib|Cookie|Queue|sets|repr|new|md5|sha|sgmllib|htmlentitydefs|\
-        robotparser|xmlrpclib|DocXMLRPCServer|BaseHTTPServer|CGIHTTPServer|\
-        SimpleHTTPServer|UserDict|UserList|UserString|exceptions|thread|\
-        dummy_thread|copy_reg|itertools|cPickle|cProfile|popen2|dircache|\
-        commands|compiler|fpformat|ihooks|imputil|linuxaudiodev|mhlib|\
-        mutex|posixfile|rexec|Bastion|statcache|statvfs|sunaudiodev|toaiff|\
-        whichdb|gopherlib|mimify|multifile|pipes|sre) return ;;
-        win32api|win32con|win32gui|win32process|win32security|win32service|\
-        win32event|win32file|win32net|win32print|win32clipboard|win32com|\
-        win32console|win32cred|win32crypt|win32evtlog|win32help|win32inet|\
-        win32job|win32lz|win32memory|win32pdhutil|win32pipe|win32ras|\
-        win32rcparser|win32reg|win32security|win32transaction|win32ts|\
-        winerror|winreg|_winreg|winnt|winsound|msvcrt|_winapi|nt|\
-        msilib|winperf|wmi|comtypes|pythoncom|pywintypes|win32con|\
-        vidcap|pyHook|pywinauto|pywin32) return ;;
-        AppKit|Cocoa|Foundation|CoreData|CoreFoundation|CoreGraphics|\
-        CoreLocation|CoreMotion|CoreText|CoreVideo|GameKit|MapKit|\
-        MediaPlayer|MessageUI|QuartzCore|SceneKit|SpriteKit|StoreKit|\
-        UIKit|WatchKit|WebKit|AppKit|Quartz|CoreServices|LaunchServices|\
-        SystemConfiguration|IOKit|DiskArbitration|CFNetwork|Security|\
-        PyObjC|PyObjCTools|objc|AddressBook|CalendarStore|Collaboration|\
-        EventKit|ExceptionHandling|LatentSemanticMapping|OSServices|\
-        PreferencePanes|ScreenSaver|ServiceManagement|XgridFoundation) return ;;
-        st_*|stitch_*|creddump|addrspace|newobj|obj|rawreg|payload_setup|\
-        stitch_gen|stitch_help|stitch_lib|stitch_lnxshell|stitch_osxshell|\
-        stitch_pyld_config|stitch_utils|stitch_winshell) return ;;
-        distutils) return ;;
     esac
 
     case "$mod" in
@@ -352,6 +324,96 @@ map_shell_dep() {
     esac
 }
 
+map_perl_dep() {
+    local mod="$1"
+    case "$mod" in
+        strict|warnings|Exporter|Carp|Data::Dumper|File::Basename|File::Path|\
+        File::Spec|File::Find|File::Temp|File::Copy|Cwd|Getopt::Long|\
+        Getopt::Std|POSIX|Scalar::Util|List::Util|Storable|Encode|\
+        Time::HiRes|Time::Local|MIME::Base64|Digest::MD5|Digest::SHA|\
+        IO::File|IO::Handle|IO::Socket|IO::Select|Socket|Fcntl|\
+        Config|constant|base|parent|vars|overload|utf8|feature|\
+        B|Tie::Hash|Tie::Array|Tie::Scalar) return ;;
+
+        Win32|Win32::*|WinAPI::*) return ;;
+
+        HTTP::Request|HTTP::Response|HTTP::Headers|\
+        LWP::UserAgent|LWP::Simple|LWP|WWW::Mechanize)
+            echo "pkg:libwww-perl" ;;
+        HTTP::Tiny)
+            echo "pkg:perl" ;;
+        URI|URI::*)
+            echo "pkg:perl-uri" ;;
+        HTML::Parser|HTML::TreeBuilder|HTML::Form|\
+        HTML::Entities|HTML::Tagset)
+            echo "pkg:perl-html-parser" ;;
+        XML::Parser|XML::Simple|XML::LibXML)
+            echo "pkg:perl-xml-parser" ;;
+        DBI|DBD::*)
+            echo "pkg:perl-dbi" ;;
+        JSON|JSON::XS|JSON::PP|JSON::MaybeXS)
+            echo "pkg:perl-json" ;;
+        YAML|YAML::XS|YAML::Tiny)
+            echo "pkg:perl-yaml" ;;
+        Crypt::SSLeay|Net::SSLeay|IO::Socket::SSL)
+            echo "pkg:perl-io-socket-ssl" ;;
+        Digest::SHA1)
+            echo "pkg:perl-digest-sha1" ;;
+        Net::DNS)
+            echo "pkg:perl-net-dns" ;;
+        Net::Whois::IP|Net::Whois::Raw)
+            echo "pkg:perl-net-whois-raw" ;;
+        Net::Ping)
+            echo "pkg:perl" ;;   # bundled
+        Term::ANSIColor|Term::ReadLine|Term::ReadKey)
+            echo "pkg:perl-term-readkey" ;;
+        Encode::*)
+            echo "pkg:perl" ;;
+        threads|Thread::*)
+            echo "pkg:perl" ;;
+        *)
+            local cpan_name
+            cpan_name=$(echo "$mod" | tr '::' '-' | tr '[:upper:]' '[:lower:]')
+            echo "cpan:$mod" ;;
+    esac
+}
+
+scan_perl_deps() {
+    local src="$1"
+    local deps=()
+    local cpan_deps=()
+
+    local plfiles
+    mapfile -t plfiles < <(find "$src" -maxdepth 3 \( -name "*.pl" -o -name "*.pm" \) 2>/dev/null)
+    [[ ${#plfiles[@]} -eq 0 ]] && echo "" && return
+
+    local modules
+    modules=$(cat "${plfiles[@]}" 2>/dev/null \
+        | grep -E '^[[:space:]]*(use|require)[[:space:]]+' \
+        | sed -n \
+            "s/^[[:space:]]*use[[:space:]]\+\([A-Za-z][A-Za-z0-9:_]*\).*/\1/p;
+             s/^[[:space:]]*require[[:space:]]\+['\"]\\?\([A-Za-z][A-Za-z0-9:_]*\)['\"]\\?.*/\1/p" \
+        | grep -v '^[0-9]' \
+        | sort -u || true)
+
+    for mod in $modules; do
+        local mapped; mapped=$(map_perl_dep "$mod")
+        [[ -z "$mapped" ]] && continue
+        if [[ "$mapped" == cpan:* ]]; then
+            cpan_deps+=("${mapped#cpan:}")
+        else
+            deps+=("$mapped")
+        fi
+    done
+
+    [[ ${#cpan_deps[@]} -gt 0 ]] && \
+        printf '%s\n' "${cpan_deps[@]}" | sort -u | xargs | \
+        sed 's/^/cpan: /' >&2 || true
+
+    [[ ${#deps[@]} -eq 0 ]] && echo "" && return
+    printf '%s\n' "${deps[@]}" | sort -u | xargs
+}
+
 detect_installer() {
     local src="$1"
     for candidate in install_Termux.sh install_termux.sh Install_Termux.sh setup_termux.sh install.sh Install.sh setup.sh Setup.sh; do
@@ -370,10 +432,11 @@ detect_method() {
     elif [[ -f "$src/Makefile" || -f "$src/makefile" ]]; then echo "make"
     elif [[ -f "$src/setup.py" || -f "$src/pyproject.toml" ]]; then echo "pip"
     elif ls "$src"/*.py &>/dev/null 2>&1; then echo "python-script"
-    elif ls "$src"/*.sh &>/dev/null 2>&1; then echo "shell"
-    elif ls "$src"/*.rb &>/dev/null 2>&1; then echo "ruby"
     elif ls "$src"/*.pl &>/dev/null 2>&1; then echo "perl"
+    elif ls "$src"/*.rb &>/dev/null 2>&1; then echo "ruby"
+    elif ls "$src"/*.sh &>/dev/null 2>&1; then echo "shell"
     elif ls "$src"/*.lua &>/dev/null 2>&1; then echo "lua"
+    elif ls "$src"/*.go &>/dev/null 2>&1; then echo "go"
     elif ls "$src"/*.php &>/dev/null 2>&1; then echo "php"
     elif ls "$src"/*.java &>/dev/null 2>&1; then echo "java"
     elif ls "$src"/*.kt &>/dev/null 2>&1;  then echo "kotlin"
@@ -394,8 +457,23 @@ detect_entrypoint() {
     f=$(ls "$src"/*.py 2>/dev/null | grep -vi 'setup\|conf\|config\|test' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
+    # Perl: cari file .pl utama (hindari helper/test)
+    [[ -f "$src/$pkg.pl" ]] && { echo "$pkg.pl"; return; }
+    f=$(ls "$src"/*.pl 2>/dev/null | grep -vi 'install\|setup\|update\|config\|test\|helper' | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+
     [[ -f "$src/$pkg.sh" ]] && { echo "$pkg.sh"; return; }
     f=$(ls "$src"/*.sh 2>/dev/null | grep -vi 'setup\|install\|config\|test' | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+
+    # PHP: cari file utama (hindari config/helper)
+    [[ -f "$src/$pkg.php" ]] && { echo "$pkg.php"; return; }
+    f=$(ls "$src"/*.php 2>/dev/null | grep -vi 'config\|conf\|var\|function\|helper\|class\|Dockerfile' | head -n1 || true)
+    [[ -n "$f" ]] && { basename "$f"; return; }
+
+    # Go: cari file .go utama
+    [[ -f "$src/$pkg.go" ]] && { echo "$pkg.go"; return; }
+    f=$(ls "$src"/*.go 2>/dev/null | grep -vi '_test\|setup\|config' | head -n1 || true)
     [[ -n "$f" ]] && { basename "$f"; return; }
 
     ls "$src" | head -n1
@@ -408,6 +486,7 @@ make_install_block() {
     local deps_joined="$4"
     local pip_extra="${5:-}"
     local installer="${6:-}"
+    local cpan_mods="${7:-}"
 
     local pip_extra_cmd=""
     if [[ -n "$pip_extra" ]]; then
@@ -448,16 +527,6 @@ ${pip_extra_cmd}
         fi
     done
 
-    if grep -rlE \
-        'print [^(]|^\s*print$|except \w+,\s*\w+:|^from __future__ import|basestring|xrange|raw_input' \
-        "\$libdir" --include="*.py" 2>/dev/null | grep -q .; then
-        echo "  [2to3] Python 2 syntax detected — running 2to3 auto-conversion..."
-        if command -v 2to3 >/dev/null 2>&1; then
-            2to3 --write --nobackups -n "\$libdir" 2>/dev/null || true
-            echo "  [2to3] Conversion complete"
-        fi
-    fi
-
 ${installer_cmd}
 }
 BLOCK
@@ -483,44 +552,6 @@ ${pip_extra_cmd}
     done
 
 ${installer_cmd}
-    _PY2_DETECTED=false
-    if grep -rlE \
-        'print [^(]|^\s*print$|except \w+,\s*\w+:|^from __future__ import|unicode_literals|basestring|xrange|raw_input|has_key\(\|iteritems\(\|itervalues\(\|iterkeys\(' \
-        "\$libdir" --include="*.py" 2>/dev/null | grep -q .; then
-        _PY2_DETECTED=true
-        echo "  [2to3] Python 2 syntax detected — running 2to3 auto-conversion..."
-    fi
-
-    if [[ "\$_PY2_DETECTED" == "true" ]]; then
-        if command -v 2to3 >/dev/null 2>&1; then
-            2to3 --write --nobackups -n "\$libdir" 2>/dev/null && \
-                echo "  [2to3] Conversion complete" || \
-                echo "  [2to3] Partial conversion (some files may still have issues)"
-        else
-            echo "  [2to3] Not found — installing python-tools..."
-            pip install --quiet 2to3 --break-system-packages 2>/dev/null || true
-            if command -v 2to3 >/dev/null 2>&1; then
-                2to3 --write --nobackups -n "\$libdir" 2>/dev/null || true
-                echo "  [2to3] Conversion complete"
-            else
-                echo "  [2to3] WARNING: Could not auto-convert Python 2 syntax"
-                echo "         Run manually: 2to3 --write --nobackups -n \$libdir"
-            fi
-        fi
-    fi
-
-    find "\$libdir" -name "*.py" -type f 2>/dev/null | while read -r _pyf; do
-        if grep -qE '^import (win32|winreg|_winreg|AppKit|Cocoa|Foundation|pythoncom|pywintypes)' "\$_pyf" 2>/dev/null; then
-            sed -i -E \
-                's/^(import (win32[a-zA-Z]*|winreg|_winreg|AppKit|Cocoa|Foundation|PyObjC[a-zA-Z]*|pythoncom|pywintypes|wmi|comtypes)[^\n]*)/try:\n    \1\nexcept ImportError:\n    pass/' \
-                "\$_pyf" 2>/dev/null || true
-        fi
-        if grep -qE '^from (win32|winreg|_winreg|AppKit|Cocoa|Foundation|pythoncom|pywintypes)' "\$_pyf" 2>/dev/null; then
-            sed -i -E \
-                's/^(from (win32[a-zA-Z]*|winreg|_winreg|AppKit|Cocoa|Foundation|PyObjC[a-zA-Z]*|pythoncom|pywintypes|wmi|comtypes) import[^\n]*)/try:\n    \1\nexcept ImportError:\n    pass/' \
-                "\$_pyf" 2>/dev/null || true
-        fi
-    done
 
     cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
 #!/usr/bin/env bash
@@ -590,8 +621,18 @@ cat <<BLOCK
 TERMUX_PKG_DEPENDS="golang"
 
 termux_step_make_install() {
-    export GOPATH="\$TERMUX_PKG_BUILDDIR/gopath"
-    go build -v -o "\$TERMUX_PREFIX/bin/${pkg}" .
+    export GOPATH="\$PWD/gopath"
+    export GOPROXY="https://proxy.golang.org,direct"
+    if [[ -f go.mod ]]; then
+        go get ./... 2>/dev/null || true
+        go build -v -o "\$TERMUX_PREFIX/bin/${pkg}" .
+    else
+        go mod init "${pkg}" 2>/dev/null || true
+        go get ./... 2>/dev/null || true
+        go mod tidy 2>/dev/null || true
+        go build -v -o "\$TERMUX_PREFIX/bin/${pkg}" . 2>/dev/null \
+            || go build -v -o "\$TERMUX_PREFIX/bin/${pkg}" *.go
+    fi
 }
 BLOCK
     ;;
@@ -601,7 +642,7 @@ cat <<BLOCK
 TERMUX_PKG_DEPENDS="nodejs"
 
 termux_step_make_install() {
-    npm install --prefix "\$TERMUX_PREFIX" -g "\$TERMUX_PKG_SRCDIR"
+    npm install --prefix "\$TERMUX_PREFIX" -g .
 }
 BLOCK
     ;;
@@ -620,10 +661,48 @@ BLOCK
 
     perl)
 cat <<BLOCK
-TERMUX_PKG_DEPENDS="perl"
+TERMUX_PKG_DEPENDS="${deps_joined}"
+TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_make_install() {
-    perl Makefile.PL PREFIX="\$TERMUX_PREFIX" && make && make install
+    local libdir="\$TERMUX_PREFIX/lib/${pkg}"
+    mkdir -p "\$libdir"
+
+    cp -r . "\$libdir/"
+
+    if command -v cpanm >/dev/null 2>&1 || command -v cpan >/dev/null 2>&1; then
+        echo "  Installing CPAN dependencies..."
+        local _cpanm
+        command -v cpanm &>/dev/null && _cpanm="cpanm --quiet" || _cpanm="cpan -T"
+        local _mods="${cpan_mods}"
+        for _mod in \$_mods; do
+            perl -e "require \$_mod; 1" 2>/dev/null && continue
+            echo "    + \$_mod"
+            \$_cpanm "\$_mod" 2>/dev/null || true
+        done
+    else
+        echo "  TIP: Install cpanm for automatic CPAN dep install: pkg install perl-app-cpanminus"
+    fi
+
+    if [[ -f "\$libdir/Makefile.PL" ]]; then
+        cd "\$libdir"
+        perl Makefile.PL PREFIX="\$TERMUX_PREFIX" 2>/dev/null && make && make install || true
+    elif [[ -f "\$libdir/Build.PL" ]]; then
+        cd "\$libdir"
+        perl Build.PL --install_base="\$TERMUX_PREFIX" 2>/dev/null && \
+            perl Build && perl Build install || true
+    fi
+
+    if [[ -f "\$libdir/${main}" ]]; then
+        chmod 0755 "\$libdir/${main}"
+        mkdir -p "\$TERMUX_PREFIX/bin"
+        cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
+#!/data/data/com.termux/files/usr/bin/bash
+cd "/data/data/com.termux/files/usr/lib/${pkg}" || exit 1
+exec perl "/data/data/com.termux/files/usr/lib/${pkg}/${main}" "\$@"
+WRAPPER
+        chmod 0755 "\$TERMUX_PREFIX/bin/${pkg}"
+    fi
 }
 BLOCK
     ;;
@@ -647,7 +726,7 @@ termux_step_make_install() {
     cp -r . "\$TERMUX_PREFIX/lib/${pkg}/"
     cat > "\$TERMUX_PREFIX/bin/${pkg}" <<'WRAPPER'
 #!/usr/bin/env bash
-exec php "\${PREFIX}/lib/${pkg}/${main}" "\$@"
+exec php "/data/data/com.termux/files/usr/lib/${pkg}/${main}" "$@"
 WRAPPER
     chmod 0755 "\$TERMUX_PREFIX/bin/${pkg}"
 }
@@ -808,6 +887,8 @@ step "Dependency scan"
 
 DEPS_DECLARED=""
 DEPS_IMPORTS=""
+DEPS_PERL_PKG=""
+DEPS_PERL_CPAN=""
 
 DEPS_SHELL_WARNS=""
 DEPS_SHELL_PKGS=""
@@ -817,6 +898,15 @@ if [[ "$INSTALL_METHOD" == "pip" || "$INSTALL_METHOD" == "python-script" ]]; the
     DEPS_IMPORTS=$(scan_python_imports "$SRC" || true)
     info "Declared deps : ${DEPS_DECLARED:-none}"
     info "Import deps   : ${DEPS_IMPORTS:-none}"
+fi
+
+if [[ "$INSTALL_METHOD" == "perl" ]]; then
+    _PERL_CPAN_TMP=$(mktemp)
+    DEPS_PERL_PKG=$(scan_perl_deps "$SRC" 2>"$_PERL_CPAN_TMP" || true)
+    DEPS_PERL_CPAN=$(sed 's/^cpan: //' "$_PERL_CPAN_TMP" 2>/dev/null || true)
+    rm -f "$_PERL_CPAN_TMP"
+    info "Perl pkg deps : ${DEPS_PERL_PKG:-none}"
+    [[ -n "$DEPS_PERL_CPAN" ]] && info "CPAN modules  : ${DEPS_PERL_CPAN}"
 fi
 
 DEPS_SHELL_RAW=$(scan_shell_deps "$SRC" || true)
@@ -839,7 +929,10 @@ case "$INSTALL_METHOD" in
     npm)        ALL_DEPS="nodejs" ;;
     cmake)      ALL_DEPS="libandroid-support" ;;
     ruby)       ALL_DEPS="ruby" ;;
-    perl)       ALL_DEPS="perl" ;;
+    perl)
+        _PERL_PKG_LIST="perl ${DEPS_PERL_PKG:-}"
+        ALL_DEPS=$(echo "$_PERL_PKG_LIST" | tr ' ' '\n' | sed 's|^pkg:||g' | sort -u | grep -v '^$' | xargs)
+        ;;
     lua)        ALL_DEPS="lua54" ;;
     php)        ALL_DEPS="php" ;;
     shell|make|autotools|unknown) ALL_DEPS="${DEPS_SHELL_PKGS:-}" ;;
@@ -893,7 +986,7 @@ read -rp "  Continue? [Y/n]: " _CONT
 
 step "Writing build.sh"
 
-INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED" "${PIP_ONLY_DEPS:-}" "${INSTALLER_SCRIPT:-}")
+INSTALL_BLOCK=$(make_install_block "$INSTALL_METHOD" "$PKG_NAME" "$MAIN_FILE" "$DEPENDS_JOINED" "${PIP_ONLY_DEPS:-}" "${INSTALLER_SCRIPT:-}" "${DEPS_PERL_CPAN:-}")
 
 {
     printf 'TERMUX_PKG_HOMEPAGE=%s\n'          "$HOMEPAGE"
