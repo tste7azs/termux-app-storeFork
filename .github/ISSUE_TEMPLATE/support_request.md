@@ -1,31 +1,31 @@
-# 🛠️ Permintaan Dukungan / Support Request
+# 🛠️ Support Request
 
-Gunakan template ini untuk melaporkan masalah non-bug atau meminta bantuan terkait penggunaan Termux App Store. Mohon isi semua field dengan jelas agar tim dapat membantu lebih cepat.
+Use this template to report non-bug issues or request help related to using Termux App Store. Please fill in all fields clearly so the team can assist you faster.
 
-Sebelum membuat permintaan dukungan, silakan baca dulu **[FAQ.md](./FAQ.md)** dan pertimbangkan untuk bertanya atau berdiskusi di **[GitHub Discussions](https://github.com/djunekz/termux-app-store/discussions)**.
+Before submitting a support request, please read **[FAQ](./FAQ.md)** and consider asking or discussing in **[GitHub Discussions](https://github.com/djunekz/termux-app-store/discussions)**.
 
 ---
 
-**Nama / Username:**  
-Misal: @djunekz
+**Name / Username:**  
+Example: @djunekz
 
-**Versi Termux App Store:**  
-Misal: 1.0.3 / versi binary / versi py
+**Termux App Store Version:**  
+Example: 1.0.3 / binary version / python version
 
-**Lingkungan / OS:**  
-Misal: Termux Android 12, aarch64
+**Environment / OS:**  
+Example: Termux Android 12, aarch64
 
-**Deskripsi Masalah / Pertanyaan:**  
-Tuliskan masalah atau pertanyaan Anda secara rinci. Sertakan langkah-langkah yang sudah dicoba, error yang muncul, atau hasil yang diharapkan.
+**Problem Description / Question:**  
+Describe your issue or question in detail. Include steps you have already tried, any errors encountered, or the expected result.
 
-**Langkah Reproduksi (Opsional):**  
-Jika berkaitan dengan masalah tertentu, tuliskan langkah-langkah untuk mereproduksi masalah tersebut.
+**Steps to Reproduce (Optional):**  
+If applicable, provide steps to reproduce the issue.
 
-**Screenshot / Output Terminal (Opsional):**  
-Tambahkan screenshot atau log terminal jika relevan.
+**Screenshot / Terminal Output (Optional):**  
+Attach screenshots or terminal logs if relevant.
 
-**Prioritas / Tingkat Urgensi:**  
-Misal: Tinggi / Sedang / Rendah
+**Priority / Urgency Level:**  
+Example: High / Medium / Low
 
-**Catatan Tambahan (Opsional):**  
-Informasi tambahan yang dapat membantu tim memberikan dukungan.
+**Additional Notes (Optional):**  
+Any extra information that may help the team assist you.

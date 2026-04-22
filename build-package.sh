@@ -46,10 +46,10 @@ _banner() {
   echo ""
   _line_heavy
   printf "${BOLD}${BCYAN}"
-  printf "%*s" $(( (w + 26) / 2 )) "Termux App Store Builder"
+  printf "%*s" $(( (w + 6) / 2 )) "Termux App Store Builder"
   printf "${R}\n"
   printf "${GRAY}"
-  printf "%*s" $(( (w + 36) / 2 )) "github.com/djunekz/termux-app-store"
+  printf "%*s" $(( (w + 16) / 2 )) "github.com/djunekz/termux-app-store"
   printf "${R}\n"
   _line_heavy
   echo ""
@@ -152,7 +152,6 @@ fi
 
 _ok "Syntax OK"
 
-# Ensure PATH always includes PREFIX/bin so tools like npm, pip, cargo are available
 export PATH="$PREFIX/bin:$PATH"
 
 source "$BUILD_SH"
@@ -312,16 +311,15 @@ _section "Dependencies"
 
 if [[ -n "${TERMUX_PKG_DEPENDS:-}" ]]; then
   _progress "Installing dependencies..."
-  IFS=',' read -ra _DEPS <<< "$TERMUX_PKG_DEPENDS"
-  for dep in "${_DEPS[@]}"; do
-    dep="$(echo "$dep" | tr -d ' ')"
+  _DEPS_NORMALIZED=$(echo "$TERMUX_PKG_DEPENDS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | tr '\n' ' ')
+  for dep in $_DEPS_NORMALIZED; do
     printf "      ${GRAY}+${R} ${WHITE}%s${R}\n" "$dep"
   done
 
   _spin_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   _spin_i=0
   _PKG_LOG=$(mktemp)
-  pkg install -y $(tr ',' ' ' <<<"$TERMUX_PKG_DEPENDS") > "$_PKG_LOG" 2>&1 &
+  pkg install -y $_DEPS_NORMALIZED > "$_PKG_LOG" 2>&1 &
   _PKG_PID=$!
   while kill -0 "$_PKG_PID" 2>/dev/null; do
     _sc="${_spin_chars:$(( _spin_i % ${#_spin_chars} )):1}"
@@ -607,7 +605,6 @@ if [[ -n "$PREBUILT_DEB" ]]; then
 
       CLEANED_DEPS=$(echo "$COMBINED_DEPS" | sed -e 's/([^)]*)//g' -e 's/|/,/g' -e 's/  */ /g' | tr -d ' ')
 
-      # Install missing dependencies
       _progress "Installing missing dependencies from .deb..."
       IFS=',' read -ra _AUTO_DEPS <<< "$CLEANED_DEPS"
 
@@ -649,7 +646,6 @@ if declare -f termux_step_make > /dev/null 2>&1; then
   _MAKE_LOG=$(mktemp)
   _MAKE_EXIT=0
 
-  # Build spinner
   _spin_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   _spin_i=0
   ( export PATH="$PREFIX/bin:$PATH"; termux_step_make ) > "$_MAKE_LOG" 2>&1 &
@@ -698,25 +694,19 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
   _progress "Extracting .deb contents..."
   dpkg -x "$PREBUILT_DEB" "$WORK_DIR/pkg"
 
-  # Find binary/script inside .deb — check bin/ first, then fallback to any file
   BIN_FILE="$(find "$WORK_DIR/pkg" -type f -name "$PACKAGE*" -executable | head -n1 || true)"
 
-  # Fallback 1: file exists in bin/ even if not executable
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -path "*/bin/$PACKAGE" | head -n1 || true)"
 
-  # Fallback 2: any wrapper script in bin/
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -path "*/bin/*" | head -n1 || true)"
 
-  # Fallback 3: .py or .sh file in lib/
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f \( -name "*.py" -o -name "*.sh" \) | head -n1 || true)"
 
-  # Fallback 4: any file available
   [[ -z "$BIN_FILE" ]] &&     BIN_FILE="$(find "$WORK_DIR/pkg" -type f -not -path "*/DEBIAN/*" | head -n1 || true)"
 
   if [[ -n "$BIN_FILE" ]]; then
     mkdir -p "$PREFIX/lib/$PACKAGE"
 
-    # Detect file type to determine install method
     _BIN_EXT="${BIN_FILE##*.}"
     _IS_SCRIPT=0
     _SCRIPT_INTERPRETER=""
@@ -728,7 +718,6 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
       _IS_SCRIPT=1
       _SCRIPT_INTERPRETER="bash"
     else
-      # Check shebang
       _SHEBANG=$(head -c 512 "$BIN_FILE" 2>/dev/null | head -n1 || true)
       if echo "$_SHEBANG" | grep -q "python"; then
         _IS_SCRIPT=1
@@ -740,7 +729,6 @@ elif [[ -n "$PREBUILT_DEB" ]]; then
     fi
 
     if [[ "$_IS_SCRIPT" -eq 1 ]]; then
-      # Script — copy to lib/ and create wrapper without needing libpython check
       cp "$BIN_FILE" "$PREFIX/lib/$PACKAGE/$(basename $BIN_FILE)"
       chmod 644 "$PREFIX/lib/$PACKAGE/$(basename $BIN_FILE)"
       mkdir -p "$PREFIX/bin"
@@ -757,9 +745,6 @@ EOF
       mv "$BIN_FILE" "$PREFIX/lib/$PACKAGE/$PACKAGE"
       chmod +x "$PREFIX/lib/$PACKAGE/$PACKAGE"
 
-    # Check if binary is linked to a specific libpython version
-    # If so, don't exec directly — create a python3 wrapper so
-    # it's not tied to a specific Python version (e.g., libpython3.12.so)
     _LINKED_PYTHON=""
     if command -v readelf &>/dev/null; then
       _LINKED_PYTHON=$(readelf -d "$PREFIX/lib/$PACKAGE/$PACKAGE" 2>/dev/null         | grep -oP "libpython[0-9]+\.[0-9]+[^]]*" | head -n1 || true)
@@ -768,25 +753,18 @@ EOF
     fi
 
     if [[ -n "$_LINKED_PYTHON" ]]; then
-      # Binary linked to a specific libpython version.
-      # Solution: create a symlink from the currently installed libpython
-      # to the name the binary needs. This is the most reliable and permanent approach
-      # since Termux always has one active Python version.
 
       _PY_VER=$(echo "$_LINKED_PYTHON" | grep -oP "[0-9]+\.[0-9]+" | head -n1 || true)
 
-      # Check if the required libpython already exists
       _LIB_NEEDED="$PREFIX/lib/libpython${_PY_VER}.so.1.0"
       _LIB_EXISTS=0
       find "$PREFIX/lib" -name "libpython${_PY_VER}*.so*" 2>/dev/null | grep -q . && _LIB_EXISTS=1
 
       if [[ "$_LIB_EXISTS" -eq 0 && -n "$_PY_VER" ]]; then
-        # Find another installed libpython version (e.g., libpython3.13.so.1.0)
         _INSTALLED_LIBPY=$(find "$PREFIX/lib" -maxdepth 1 -name "libpython*.so.1.0" \
           2>/dev/null | head -n1 || true)
 
         if [[ -n "$_INSTALLED_LIBPY" ]]; then
-          # Create symlink: libpython3.12.so.1.0 → libpython3.13.so.1.0 (or whichever version)
           ln -sf "$_INSTALLED_LIBPY" "$_LIB_NEEDED" 2>/dev/null && {
             _ok "Symlinked: libpython${_PY_VER}.so.1.0 → $(basename $_INSTALLED_LIBPY)"
           } || {
@@ -816,7 +794,7 @@ EOF
     chmod +x "$PREFIX/bin/$PACKAGE"
     _ok "Binary installed"
     _detail "Bin:" "$PREFIX/bin/$PACKAGE"
-    fi  # end if _IS_SCRIPT
+    fi
   fi
 
 elif declare -f termux_step_make_install > /dev/null 2>&1; then
@@ -852,6 +830,18 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
 
   _INSTALL_OUTPUT=$(cat "$_INSTALL_LOG")
   rm -f "$_INSTALL_LOG"
+
+  if [[ $_INSTALL_EXIT -ne 0 ]]; then
+    _PIP_OK=false
+    echo "$_INSTALL_OUTPUT" | grep -qi "Successfully installed" && _PIP_OK=true
+    [[ -f "$PREFIX/bin/$PACKAGE" ]] && _PIP_OK=true
+    command -v "$PACKAGE" &>/dev/null && _PIP_OK=true
+
+    if [[ "$_PIP_OK" == "true" ]]; then
+      _warn "termux_step_make_install() exited $_INSTALL_EXIT but package appears installed — continuing"
+      _INSTALL_EXIT=0
+    fi
+  fi
 
   if [[ $_INSTALL_EXIT -ne 0 ]]; then
     echo ""
@@ -929,19 +919,72 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
   _progress "Staging installed files..."
   mkdir -p "$WORK_DIR/pkg$PREFIX/bin" "$WORK_DIR/pkg$PREFIX/lib"
 
-  [[ -f "$PREFIX/bin/$PACKAGE" ]] && \
+  if [[ -f "$PREFIX/bin/$PACKAGE" ]]; then
     install -Dm755 "$PREFIX/bin/$PACKAGE" "$WORK_DIR/pkg$PREFIX/bin/$PACKAGE"
+    _detail "Staged bin:" "$PREFIX/bin/$PACKAGE"
+  fi
 
-  _PY_SITE_TMP=$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null || true)
-  if [[ -n "$_PY_SITE_TMP" ]]; then
-    _EP_FILE=$(find "$_PY_SITE_TMP" -maxdepth 2 -iname "entry_points.txt" -path "*${PACKAGE}*" 2>/dev/null | head -1 || true)
+  _PY_SITE_CANDIDATES=()
+  _SYS_SITE=$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null || true)
+  [[ -n "$_SYS_SITE" ]] && _PY_SITE_CANDIDATES+=("$_SYS_SITE")
+  while IFS= read -r _s; do
+    _PY_SITE_CANDIDATES+=("$_s")
+  done < <(find "$PREFIX/lib" -maxdepth 2 -type d -name "site-packages" 2>/dev/null)
+  mapfile -t _PY_SITE_CANDIDATES < <(printf '%s\n' "${_PY_SITE_CANDIDATES[@]}" | sort -u)
+
+  _STAGED_PY=false
+  for _PY_SITE in "${_PY_SITE_CANDIDATES[@]}"; do
+    [[ -d "$_PY_SITE" ]] || continue
+
+    _EP_FILE=$(find "$_PY_SITE" -maxdepth 3 \
+      \( -iname "entry_points.txt" -path "*${PACKAGE}*" \
+         -o -iname "RECORD" -path "*${PACKAGE}*" \) \
+      2>/dev/null | grep "entry_points" | head -1 || true)
+
     if [[ -n "$_EP_FILE" ]]; then
-      grep -A50 "\[console_scripts\]" "$_EP_FILE" 2>/dev/null | grep "=" | while IFS='=' read -r _ep_name _; do
+      grep -A50 "\[console_scripts\]" "$_EP_FILE" 2>/dev/null | grep "=" | \
+      while IFS='=' read -r _ep_name _; do
         _ep_name=$(echo "$_ep_name" | tr -d ' ')
-        [[ -f "$PREFIX/bin/$_ep_name" ]] && \
-          install -Dm755 "$PREFIX/bin/$_ep_name" "$WORK_DIR/pkg$PREFIX/bin/$_ep_name" && \
-          _detail "Staged bin:" "$PREFIX/bin/$_ep_name"
+        [[ -z "$_ep_name" ]] && continue
+        for _bdir in "$PREFIX/bin" "$(python3 -c 'import sys; print(sys.prefix)' 2>/dev/null)/bin"; do
+          if [[ -f "$_bdir/$_ep_name" ]]; then
+            install -Dm755 "$_bdir/$_ep_name" "$WORK_DIR/pkg$PREFIX/bin/$_ep_name"
+            _detail "Staged script:" "$_bdir/$_ep_name"
+            break
+          fi
+        done
       done
+    fi
+
+    _PY_PKG=$(find "$_PY_SITE" -maxdepth 1 -type d \
+      \( -iname "${PACKAGE}" -o -iname "${PACKAGE}-*" \) 2>/dev/null | \
+      grep -v "dist-info\|egg-info" | head -1 || true)
+
+    if [[ -n "$_PY_PKG" && "$_STAGED_PY" == "false" ]]; then
+      _PY_SITE_DEST="$WORK_DIR/pkg$_PY_SITE"
+      mkdir -p "$_PY_SITE_DEST"
+      cp -r "$_PY_PKG" "$_PY_SITE_DEST/"
+      find "$_PY_SITE" -maxdepth 1 \
+        \( -iname "${PACKAGE}-*.dist-info" -o -iname "${PACKAGE}-*.egg-info" \) \
+        -exec cp -r {} "$_PY_SITE_DEST/" \; 2>/dev/null || true
+      _detail "Staged pip pkg:" "$_PY_PKG"
+      _STAGED_PY=true
+    fi
+  done
+
+  if [[ "$_STAGED_PY" == "false" ]]; then
+    _FALLBACK=$(find "$PREFIX/lib" -maxdepth 3 -type d -iname "${PACKAGE}" 2>/dev/null | \
+      grep -v "dist-info\|egg-info" | head -1 || true)
+    if [[ -n "$_FALLBACK" ]]; then
+      _FALLBACK_PARENT=$(dirname "$_FALLBACK")
+      _FALLBACK_DEST="$WORK_DIR/pkg$_FALLBACK_PARENT"
+      mkdir -p "$_FALLBACK_DEST"
+      cp -r "$_FALLBACK" "$_FALLBACK_DEST/"
+      find "$_FALLBACK_PARENT" -maxdepth 1 \
+        \( -iname "${PACKAGE}-*.dist-info" -o -iname "${PACKAGE}-*.egg-info" \) \
+        -exec cp -r {} "$_FALLBACK_DEST/" \; 2>/dev/null || true
+      _detail "Staged fallback pip:" "$_FALLBACK"
+      _STAGED_PY=true
     fi
   fi
 
@@ -956,23 +999,43 @@ elif declare -f termux_step_make_install > /dev/null 2>&1; then
     _detail "Staged npm:" "$PREFIX/lib/node_modules/$PACKAGE"
   fi
 
-  _PY_SITE=$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null || true)
-  if [[ -n "$_PY_SITE" ]]; then
-    _PY_PKG=$(find "$_PY_SITE" -maxdepth 1 -iname "${PACKAGE}" -o \
-                               -maxdepth 1 -iname "${PACKAGE}-*.dist-info" 2>/dev/null | \
-              grep -v "dist-info" | head -1 || true)
-    if [[ -n "$_PY_PKG" ]]; then
-      _PY_SITE_DEST="$WORK_DIR/pkg$_PY_SITE"
-      mkdir -p "$_PY_SITE_DEST"
-      cp -r "$_PY_PKG" "$_PY_SITE_DEST/"
-      find "$_PY_SITE" -maxdepth 1 -iname "${PACKAGE}-*.dist-info" -exec cp -r {} "$_PY_SITE_DEST/" \; 2>/dev/null || true
-      _detail "Staged pip:" "$_PY_PKG"
-    fi
+  if [[ -d "$PREFIX/share/doc/$PACKAGE" ]]; then
+    mkdir -p "$WORK_DIR/pkg$PREFIX/share/doc"
+    cp -r "$PREFIX/share/doc/$PACKAGE" "$WORK_DIR/pkg$PREFIX/share/doc/"
   fi
 
-  [[ -d "$PREFIX/share/doc/$PACKAGE" ]] && \
-    mkdir -p "$WORK_DIR/pkg$PREFIX/share/doc" && \
-    cp -r "$PREFIX/share/doc/$PACKAGE" "$WORK_DIR/pkg$PREFIX/share/doc/"
+  _STAGED_COUNT=$(find "$WORK_DIR/pkg$PREFIX" -type f 2>/dev/null | grep -v "DEBIAN" | wc -l)
+  if [[ "$_STAGED_COUNT" -eq 0 ]]; then
+    _warn "Staging found no files — attempting emergency capture from PREFIX"
+    # Binary in bin/
+    if [[ -f "$PREFIX/bin/$PACKAGE" ]]; then
+      install -Dm755 "$PREFIX/bin/$PACKAGE" "$WORK_DIR/pkg$PREFIX/bin/$PACKAGE"
+      _detail "Emergency bin:" "$PREFIX/bin/$PACKAGE"
+    fi
+    for _sp in "${_PY_SITE_CANDIDATES[@]:-}"; do
+      [[ -d "$_sp" ]] || continue
+      _epkg=$(find "$_sp" -maxdepth 1 -type d 2>/dev/null | \
+        awk -F/ '{print $NF}' | grep -i "^${PACKAGE}" | grep -v "dist-info\|egg-info" | head -1 || true)
+      if [[ -n "$_epkg" ]]; then
+        _SP_DEST="$WORK_DIR/pkg$_sp"
+        mkdir -p "$_SP_DEST"
+        cp -r "$_sp/$_epkg" "$_SP_DEST/"
+        find "$_sp" -maxdepth 1 \
+          \( -iname "${_epkg}-*.dist-info" -o -iname "${_epkg}-*.egg-info" \) \
+          -exec cp -r {} "$_SP_DEST/" \; 2>/dev/null || true
+        _detail "Emergency pip:" "$_sp/$_epkg"
+        break
+      fi
+    done
+    _STAGED_COUNT=$(find "$WORK_DIR/pkg$PREFIX" -type f 2>/dev/null | grep -v "DEBIAN" | wc -l)
+    if [[ "$_STAGED_COUNT" -gt 0 ]]; then
+      _ok "Emergency capture succeeded ($_STAGED_COUNT file(s))"
+    else
+      _warn "Staging empty — .deb will contain no files (package may still be installed on device)"
+    fi
+  else
+    _detail "Files staged:" "$_STAGED_COUNT"
+  fi
 
   _ok "Custom install completed"
 
@@ -1131,10 +1194,6 @@ Maintainer: ${TERMUX_PKG_MAINTAINER:-unknown}
 Description: ${TERMUX_PKG_DESCRIPTION:-No description}
 EOF
 
-if [[ -n "${TERMUX_PKG_DEPENDS:-}" ]]; then
-  echo "Depends: ${TERMUX_PKG_DEPENDS}" >> "$CONTROL_DIR/control"
-fi
-
 _ok "control file written"
 _detail "Package:"    "${TERMUX_PKG_NAME:-$PACKAGE}"
 _detail "Version:"    "${TERMUX_PKG_VERSION:-0.0.1}"
@@ -1200,7 +1259,10 @@ _ok "Package built successfully"
 _section "Installing Package"
 
 _progress "Running dpkg -i..."
-dpkg -i "$DEB_FILE"
+if ! dpkg -i "$DEB_FILE" 2>&1; then
+  _warn "dpkg -i reported issues — retrying with --force-depends..."
+  dpkg -i --force-depends "$DEB_FILE" 2>&1 || _warn "Install completed with warnings (dependency declarations ignored)"
+fi
 
 if apt-mark hold "$PACKAGE" > /dev/null 2>&1; then
   _ok "Package held — protected from 'pkg upgrade' overwrite"

@@ -110,12 +110,14 @@ def has_store_fingerprint(path: Path) -> bool:
     return False
 
 def is_valid_root(path: Path) -> bool:
-    return (
-        path.is_dir()
-        and (path / "packages").is_dir()
-        and (path / "build-package.sh").is_file()
-        and has_store_fingerprint(path)
-    )
+    if not path.is_dir():
+        return False
+    if not (path / "packages").is_dir():
+        return False
+    pip_home = Path.home() / ".termux-app-store"
+    if path.resolve() == pip_home.resolve():
+        return True
+    return (path / "build-package.sh").is_file() and has_store_fingerprint(path)
 
 def load_cached_root():
     try:
@@ -149,19 +151,41 @@ def resolve_app_root() -> Path:
     if cached:
         return cached
 
-    base = (
-        Path(sys.executable).resolve().parent
-        if getattr(sys, "frozen", False)
-        else Path(__file__).resolve().parent
-    )
+    if getattr(sys, "frozen", False):
+        base = Path(sys.executable).resolve().parent
+        if is_valid_root(base):
+            save_cached_root(base)
+            return base
 
-    if is_valid_root(base):
-        save_cached_root(base)
-        return base
+    source_base = Path(__file__).resolve().parent.parent
+    if is_valid_root(source_base):
+        save_cached_root(source_base)
+        return source_base
 
-    raise FileNotFoundError(
-        "export TERMUX_APP_STORE_HOME=/path/to/termux-app-store"
-    )
+    pip_home = Path.home() / ".termux-app-store"
+    pip_home.mkdir(parents=True, exist_ok=True)
+    (pip_home / "packages").mkdir(exist_ok=True)
+    save_cached_root(pip_home)
+    return pip_home
+
+def ensure_build_package_sh() -> bool:
+    app_root = get_app_root()
+    build_pkg = app_root / "build-package.sh"
+    if build_pkg.exists():
+        return True
+    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/build-package.sh"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+            if raw:
+                build_pkg.write_bytes(raw)
+                build_pkg.chmod(0o755)
+                return True
+    except Exception:
+        pass
+    return False
+
 
 def fetch_index_from_github() -> list:
     try:
@@ -191,7 +215,7 @@ def fetch_index_from_github() -> list:
 
 
 def ensure_package_files(name: str) -> bool:
-    pkg_dir = PACKAGES_DIR / name
+    pkg_dir = get_packages_dir() / name
     build_sh = pkg_dir / "build.sh"
 
     if build_sh.exists():
@@ -272,14 +296,20 @@ def get_packages(packages_dir: Path, online: bool = True) -> list:
     if cached:
         return [normalize_pkg(p) for p in cached]
 
-    # Fallback lokal
     raw = load_packages_from_local(packages_dir)
     return [normalize_pkg(p) for p in raw]
 
 
-APP_ROOT     = resolve_app_root()
-PACKAGES_DIR = APP_ROOT / "packages"
-ROOT_DIR     = APP_ROOT
+_APP_ROOT = None
+
+def get_app_root() -> Path:
+    global _APP_ROOT
+    if _APP_ROOT is None:
+        _APP_ROOT = resolve_app_root()
+    return _APP_ROOT
+
+def get_packages_dir() -> Path:
+    return get_app_root() / "packages"
 
 
 class PackageItem(ListItem):
@@ -389,7 +419,6 @@ class TermuxAppStore(App):
 
         self.set_interval(0.1, self.consume_worker_queue)
 
-        # Load packages: coba online dulu, fallback ke cache/lokal
         self.load_packages(online=True)
         self.refresh_list()
 
@@ -426,7 +455,7 @@ class TermuxAppStore(App):
         yield Static("Official Developer @djunekz | Termux App Store", id="footer")
 
     def load_packages(self, online: bool = False):
-        self.packages = get_packages(PACKAGES_DIR, online=online)
+        self.packages = get_packages(get_packages_dir(), online=online)
         self.status_cache.clear()
 
     def refresh_list(self):
@@ -543,9 +572,16 @@ class TermuxAppStore(App):
             self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
             return
 
+        if not ensure_build_package_sh():
+            self.call_from_thread(lambda: self.update_log("\n✗ Failed to download build-package.sh."))
+            self.installing = False
+            self.call_from_thread(lambda: setattr(self.install_btn, "disabled", False))
+            self.call_from_thread(lambda: setattr(self.uninstall_btn, "disabled", False))
+            return
+
         proc = subprocess.Popen(
             ["bash", "build-package.sh", name],
-            cwd=str(ROOT_DIR),
+            cwd=str(get_app_root()),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
@@ -628,6 +664,7 @@ class TermuxAppStore(App):
         self.log_container.scroll_end(animate=False)
 
 def run_tui():
+    get_app_root()
     TermuxAppStore().run()
 
 if __name__ == "__main__": # pragma: no cover

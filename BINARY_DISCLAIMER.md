@@ -6,7 +6,7 @@ By downloading or executing the binary, you acknowledge and agree to the followi
 
 ---
 
-## ⚠️ No Warranty
+## No Warranty
 
 The binary is provided **"AS IS"**, without warranty of any kind, express or implied.
 
@@ -20,7 +20,7 @@ Use at your own risk.
 
 ---
 
-## 🧠 Transparency & Trust
+## Transparency & Trust
 
 This project is **open-source**.
 
@@ -32,7 +32,7 @@ If you do not trust the binary, **build it yourself from source**.
 
 ---
 
-## 🧪 Environment-Specific Behavior
+## Environment-Specific Behavior
 
 The binary is designed for:
 - **Termux**
@@ -47,7 +47,7 @@ Behavior may vary depending on:
 
 ---
 
-## 🔐 Security Considerations
+## Security Considerations
 
 - The binary may execute shell commands (e.g. `build-package.sh`)
 - It may install system packages via `pkg`
@@ -57,7 +57,7 @@ You should **review permissions** and **understand the build process** before us
 
 ---
 
-## ❌ No Liability
+## No Liability
 
 In no event shall the author be liable for:
 - Data loss
@@ -68,7 +68,7 @@ In no event shall the author be liable for:
 
 ---
 
-## ✅ Recommended Usage
+## Recommended Usage
 
 ✔ Prefer the official GitHub Releases  
 ✔ Verify checksums when available  
@@ -77,7 +77,7 @@ In no event shall the author be liable for:
 
 ---
 
-## 📌 Final Note
+## Final Note
 
 If you are unsure or uncomfortable running a precompiled binary,
 **do not use it** and build from source instead.

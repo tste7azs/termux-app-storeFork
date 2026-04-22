@@ -8,16 +8,84 @@ and this project adheres to semantic versioning.
 
 ## [Unreleased]
 
+### Added
+- New menu `termux-build init` for auto create and build package
+- New file termux-build-init.sh in directory tools for auto create and build package
+- Package `auxscan` v1.0.0 - Vulnerability Scanner to automate certain tasks, improve
+- Package `clickjacking-tester` v1.0.0 - A python script designed to check if the website if vulnerable of clickjacking and create a poc
+- Package `cmseek` v1.1.3 - CMS Detection and Exploitation suite - Scan WordPress, Joomla, Drupal and over 180 other CMSs
+- Package `cmsmap` v1.0.0 - CMSmap is a python open source CMS scanner that automates the process of detecting security flaws of the most popular CMSs. 
+- Package `gemail-hack` v1.0.0 - python script for Hack gmail account brute force
+- Package `ghosttrack` v1.0.0 - Useful tool to track location or mobile number
+- Package `goblinwordgenerator` v1.0.0 - Python wordlist generator 
+- Package `hammer` v1.0.0 - Ddos attack tool for termux
+- Package `hash-buster` v1.0.0 - hash-buster — auto-packaged by termux-build-init
+- Package `ht-wps-breaker` v1.0.0 - HT-WPS Breaker (High Touch WPS Breaker)
+- Package `hunner` v1.0.0 - Hacking framework
+- Package `instareporter` v1.0.0 - Instagram Mass Reporting Tool
+- Package `ip-tracker` v1.0.0 - Track anyones IP just opening a link!
+- Package `ipgeolocation` v2.0.4 - Retrieve IP Geolocation information
+- Package `lazymux` v1.0.0 - termux tool installer
+- Package `termux-ai` v1.0.0 - Interactive AI tool for Termux with 10+ providers and 50+ image models ✨
+- Package `userfinder` v1.0.0 - userfinder — auto-packaged by termux-build-init
+- Package `termux-sync` v0.1.0 - OpenSource Backup and restore your entire Termux environment across devices.
+- Package `lalin` v1.0.0 - this script automatically install any package for pentest with uptodate tools , and lazy command for run the tools like lazynmap , install another and update to new #actually for lazy people hahaha #and Lalin is remake the lazykali with fixed bugs , added new features and uptodate tools . Its compatible with the latest release of Kali (Rolling)
+- Package `myserver` v1.0.0 - myserver — auto-packaged by termux-build-init
+- Package `parsero` v1.0.0 - Parsero | Robots.txt audit tool
+- Package `red-hawk` v1.0.0 - All in one tool for Information Gathering, Vulnerability Scanning and Crawling. A must have tool for all penetration testers
+- Package `sublist3r` v1.1 - Fast subdomains enumeration tool for penetration testers
+- Package `termuxalpine` v1.0.0 - Use TermuxAlpine.sh calling to install Alpine Linux in Termux on Android. This setup script will attempt to set Alpine Linux up in your Termux environment.
+- Package `the-eye` v1.0.0 - Simple security surveillance script for linux distributions.
+
+### Changed
+- Package `bashxt` v2.2 - Updated metadata
+- Package `cybertuz` v1.0.1 - Updated metadata
+- Package `impulse` v1.0.0 - Updated metadata
+- Package `pymaker` v1.0.0 - Updated metadata
+- Package `fd` v10.4.2 - Updated metadata
+- Package `ani-cli` v4.11 - Updated metadata
+
 ### Update
+- Package `aura` v0.8.2 → v0.10.0
+- Package `fd` v10.3.0 → v10.4.2
+- Package `ani-cli` v4.10 → v4.11
+- Package `uv` v0.10.4 → v0.11.7
+- Package `sigit` v2.0-pre → v2.0
+
+---
+
+## [v0.2.4] - 2026-04-07
+### Update
+- Change log message format in CLI
+- Repack and download build-package for installer package
+- Fixed bug not found `build-package` before install package
+- Fixed bug installer in TUI and CLI
+- Fixed fetch bug version
+- Auto update core to source with `termux-app-store update`
+- Update formating docs
+- Update source version to `__init__.py` or `pyproject.toml`
+- Update support installer manual (git clone) or auto (pip install)
+- Fixed crash launcher and intaller packages
+
+---
+
+## [v0.2.3] - 2026-04-06
+### Update
+- Update system core `termux-app-store update`
+- Support installer with `pip install termux-app-store`
+- `main.py` `termux_app_store.py` `termux_app_store_cli.py` resolve app
 - Package `tdoc` v1.0.5 → v1.0.6
 - Package `basic` v1.0.0 → v1.0.2
 
 ### Added
 - Package `basic` v1.0.0 - Simulator Terminal learning basic command for beginner
-- Package `userfinder` v1.0 - OSINT tool for finding profiles by username
+- Package `cybertuz` v1.0.1 - Comprehensive Educational Learning Platform for Termux
 
 ### Changed
 - Package `basic` v1.2.0 - Updated metadata
+
+### Remove
+- All ilegal packages
 
 ---
 

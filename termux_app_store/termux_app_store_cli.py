@@ -51,6 +51,18 @@ _SELF_FILES = {
 
 _INSTALL_DIR = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib" / ".tas"
 
+
+def _is_pip_mode() -> bool:
+    try:
+        import importlib.util
+        spec = importlib.util.find_spec("termux_app_store")
+        if spec and spec.origin:
+            return "site-packages" in str(spec.origin)
+    except Exception:
+        pass
+    return False
+
+
 R       = "\033[0m"
 B       = "\033[1m"
 RED     = "\033[31m"
@@ -104,12 +116,14 @@ def has_store_fingerprint(path: Path) -> bool:
 
 
 def is_valid_root(path: Path) -> bool:
-    return (
-        path.is_dir()
-        and (path / "packages").is_dir()
-        and (path / "build-package.sh").is_file()
-        and has_store_fingerprint(path)
-    )
+    if not path.is_dir():
+        return False
+    if not (path / "packages").is_dir():
+        return False
+    pip_home = Path.home() / ".termux-app-store"
+    if path.resolve() == pip_home.resolve():
+        return True
+    return (path / "build-package.sh").is_file() and has_store_fingerprint(path)
 
 
 def load_cached_root():
@@ -144,19 +158,62 @@ def resolve_app_root() -> Path:
     if cached:
         return cached
 
-    base = (
-        Path(sys.executable).resolve().parent
-        if getattr(sys, "frozen", False)
-        else Path(__file__).resolve().parent
-    )
+    if getattr(sys, "frozen", False):
+        base = Path(sys.executable).resolve().parent
+        if is_valid_root(base):
+            save_cached_root(base)
+            return base
 
-    if is_valid_root(base):
-        save_cached_root(base)
-        return base
+    source_base = Path(__file__).resolve().parent.parent
+    if is_valid_root(source_base):
+        save_cached_root(source_base)
+        return source_base
 
-    print(f"{RED}[!] Cannot find termux-app-store root.{R}")
-    print(f"    Set: {CYAN}export TERMUX_APP_STORE_HOME=/path/to/termux-app-store{R}")
-    sys.exit(1)
+    pip_home = Path.home() / ".termux-app-store"
+    pip_home.mkdir(parents=True, exist_ok=True)
+    (pip_home / "packages").mkdir(exist_ok=True)
+    save_cached_root(pip_home)
+    return pip_home
+
+
+def ensure_build_package_sh(app_root: Path) -> bool:
+    build_pkg = app_root / "build-package.sh"
+    if build_pkg.exists():
+        return True
+    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/build-package.sh"
+    try:
+        print(f"{DIM}[*] Downloading build-package.sh...{R}")
+        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+            if raw:
+                build_pkg.write_bytes(raw)
+                build_pkg.chmod(0o755)
+                print(f"{GREEN}[✔] build-package.sh downloaded.{R}")
+                return True
+    except Exception as e:
+        print(f"{RED}[✗] Failed to download build-package.sh: {e}{R}")
+    return False
+
+
+def ensure_build_package_sh(app_root: Path) -> bool:
+    build_pkg = app_root / "build-package.sh"
+    if build_pkg.exists():
+        return True
+    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/build-package.sh"
+    try:
+        print(f"{DIM}[*] Downloading build-package.sh...{R}")
+        req = urllib.request.Request(url, headers={"User-Agent": "termux-app-store-cli"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+            if raw:
+                build_pkg.write_bytes(raw)
+                build_pkg.chmod(0o755)
+                print(f"{GREEN}[✔] build-package.sh downloaded.{R}")
+                return True
+    except Exception as e:
+        print(f"{RED}[✗] Failed to download build-package.sh: {e}{R}")
+    return False
 
 
 def fetch_index() -> list:
@@ -390,11 +447,11 @@ def cmd_show(packages_dir: Path, name: str):
 """)
 
 
-def ensure_package_files(packages_dir: Path, name: str) -> bool:
+def ensure_package_files(packages_dir: Path, name: str, force_update: bool = False) -> bool:
     pkg_dir = packages_dir / name
     build_sh = pkg_dir / "build.sh"
 
-    if build_sh.exists():
+    if build_sh.exists() and not force_update:
         return True
 
     url = (
@@ -413,7 +470,7 @@ def ensure_package_files(packages_dir: Path, name: str) -> bool:
     return False
 
 
-def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False) -> bool:
+def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = False, force_update: bool = False) -> bool:
     pkgs = load_all_packages(packages_dir)
     p = next((x for x in pkgs if x["name"] == name), None)
 
@@ -430,9 +487,13 @@ def cmd_install(app_root: Path, packages_dir: Path, name: str, silent: bool = Fa
 
     print(f"\n{B}[*] Installing {CYAN}{name}{R}{B} v{p['version']}...{R}\n")
 
-    if not ensure_package_files(packages_dir, name):
+    if not ensure_package_files(packages_dir, name, force_update=force_update):
         print(f"{RED}[✗] Failed to download build files for '{name}'.{R}")
         print(f"    Check your internet connection or try again later.")
+        return False
+
+    if not ensure_build_package_sh(app_root):
+        print(f"{RED}[✗] Cannot proceed without build-package.sh.{R}")
         return False
 
     proc = subprocess.Popen(
@@ -507,7 +568,7 @@ def cmd_uninstall(name: str):
 
 
 def cmd_update(packages_dir: Path):
-    print(f"\n{B}[*] Checking for app file index updates...{R}")
+    print(f"\n{DIM}[*] Checking for app file index updates...{R}")
 
     print(f"{DIM}[*] Checking update system core master...{R}")
     cmd_self_update(silent=False)
@@ -586,7 +647,7 @@ def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
         if status == "INSTALLED":
             print(f"{GREEN}[✔] '{target}' is already up-to-date ({p['version']}).{R}")
             return
-        cmd_install(app_root, packages_dir, target, silent=True)
+        cmd_install(app_root, packages_dir, target, silent=True, force_update=True)
         return
 
     to_upgrade = []
@@ -608,7 +669,7 @@ def cmd_upgrade(app_root: Path, packages_dir: Path, target=None):
     ok = 0
     fail = 0
     for p in to_upgrade:
-        success = cmd_install(app_root, packages_dir, p["name"], silent=True)
+        success = cmd_install(app_root, packages_dir, p["name"], silent=True, force_update=True)
         if success:
             ok += 1
         else:
@@ -649,6 +710,23 @@ def _files_differ(local_path: "Path", remote_bytes: bytes) -> bool:
 
 def cmd_self_update(silent: bool = False) -> bool:
     import shutil as _shutil
+
+    if _is_pip_mode():
+        if not silent:
+            print(f"{DIM}[*] Pip mode detected — upgrading via pip...{R}")
+        ret = subprocess.call(
+            [sys.executable, "-m", "pip", "install", "--upgrade",
+             "termux-app-store", "--break-system-packages"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        if ret == 0:
+            if not silent:
+                print(f"{GREEN}[✔] termux-app-store upgraded via pip.{R}")
+            return True
+        else:
+            if not silent:
+                print(f"{RED}[✗] pip upgrade failed.{R}")
+            return False
 
     this_file   = Path(__file__).resolve()
     app_dir     = this_file.parent
@@ -711,21 +789,44 @@ def cmd_version():
             pass
 
     if not local_ver:
+        try:
+            from termux_app_store import __version__
+            if __version__:
+                local_ver = __version__
+        except Exception:
+            pass
+
+    if not local_ver:
         for f in [
-            INSTALL_DIR / "termux_app_store" / "main.py",
-            INSTALL_DIR / "termux_app_store" / "termux_app_store_cli.py",
-            Path(__file__).resolve().parent / "main.py",
+            INSTALL_DIR / "termux_app_store" / "__init__.py",
+            Path(__file__).resolve().parent / "__init__.py",
         ]:
             if f.exists():
                 try:
-                    m = re.search(r'APP_VERSION\s*=\s*"([0-9.]+)"', f.read_text())
+                    m = re.search(r'^__version__\s*=\s*"([0-9.]+)"', f.read_text(), re.MULTILINE)
                     if m:
                         local_ver = m.group(1)
                         break
                 except Exception:
                     pass
 
-    print(f"\n{B}[*] Fetching latest version from GitHub...{R}")
+    if not local_ver:
+        for f in [
+            INSTALL_DIR / "pyproject.toml",
+            Path(__file__).resolve().parent.parent / "pyproject.toml",
+        ]:
+            if f.exists():
+                try:
+                    m = re.search(r'^version\s*=\s*"([0-9.]+)"', f.read_text(), re.MULTILINE)
+                    if m:
+                        local_ver = m.group(1)
+                        break
+                except Exception:
+                    pass
+
+    print(f"\n{B}[*] Checking version termux-app-store...{R}")
+    print(f"{B}[*] Checking installed version...{R}")
+    print(f"{B}[*] Fetching latest version...{R}")
     remote_tag = fetch_latest_tag()
     remote_ver = remote_tag.lstrip("v") if remote_tag else None
 
@@ -740,8 +841,8 @@ def cmd_version():
     if remote_ver:
         print(f"  {B}Latest   :{R} {GREEN}{B}v{remote_ver}{R}")
         if local_ver and _ver_tuple(remote_ver) > _ver_tuple(local_ver):
-            print(f"\n  {YELLOW}{B}⬆  New version available: v{remote_ver}{R}")
-            print(f"  {DIM}Run: {CYAN}termux-app-store upgrade{R}{DIM} to update{R}")
+            print(f"\n  {YELLOW}{B}  New version available: v{remote_ver}{R}")
+            print(f"  {DIM}Run: {CYAN}termux-app-store update{R}")
         else:
             print(f"\n  {GREEN}{B}✔  This is the latest version{R}")
     else:
@@ -809,8 +910,8 @@ def run_cli():
 
     if not args:
         try:
-            from termux_app_store import TermuxAppStore
-            TermuxAppStore().run()
+            from termux_app_store.termux_app_store import run_tui
+            run_tui()
         except ImportError:
             print(f"{RED}[!] TUI module not found.{R}")
             cmd_help()

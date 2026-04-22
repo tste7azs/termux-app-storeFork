@@ -4,7 +4,9 @@
 
 <br/>
 
-# Termux App Store
+<H1>
+  <a href="https://djunekz.github.io/termux-app-store/">Termux App Store</a>
+</H1>
 
 **The first offline-first, source-based TUI package manager built natively for Termux.**
 
@@ -23,13 +25,13 @@
 [![PRs](https://img.shields.io/github/issues-pr/djunekz/termux-app-store?style=flat&logo=git&logoColor=white&color=3fb950)](https://github.com/djunekz/termux-app-store/pulls)
 [![Community Ready](https://img.shields.io/badge/Community-Ready-3fb950?style=flat&logo=github)](https://github.com/djunekz/termux-app-store)
 
-> 🧠 **Offline-first &nbsp;•&nbsp; Source-based &nbsp;•&nbsp; Binary-safe &nbsp;•&nbsp; Termux-native**
+> **Offline-first &nbsp;•&nbsp; Source-based &nbsp;•&nbsp; Binary-safe &nbsp;•&nbsp; Termux-native**
 
 </div>
 
 ---
 
-## What is Termux App Store?
+# What is Termux App Store?
 
 **Termux App Store** is a **TUI (Terminal User Interface)** built with Python ([Textual](https://github.com/Textualize/textual)) and CLI that lets Termux users **browse, build, and manage tools/apps** directly on Android — no account, no telemetry, no cloud dependency.
 
@@ -39,54 +41,97 @@
 
 ---
 
-## Who Is It For?
+# Who Is It For?
 
 | User | Use Case |
 |---|---|
-| 📱 Termux Users | Full control over builds & packages |
-| 🛠️ Developers | Distribute tools via source-based packaging |
-| 🔍 Reviewers & Auditors | Review and validate build scripts |
-| 📦 Maintainers | Manage multiple Termux packages at once |
+| Termux Users | Full control over builds & packages |
+| Developers | Distribute tools via source-based packaging |
+| Reviewers & Auditors | Review and validate build scripts |
+| Maintainers | Manage multiple Termux packages at once |
 
 ---
 
-## Screenshots
+# Screenshots
 
 <div align="center">
 
 <img src=".assets/0.jpeg" width="74%" alt="Termux App Store — Main View"/>
 
 <br/><br/>
+<H1>Tui Interface</H1>
 
-| Main Interface | Install Interface | Menu Palette |
+| TUI Main Interface | TUI Install Interface | Menu Palette |
 |:---:|:---:|:---:|
-| <img src=".assets/0main.jpg" width="220" alt="Main Interface"/> | <img src=".assets/1install.jpg" width="220" alt="Install Interface"/> | <img src=".assets/2pallete.jpg" width="220" alt="Menu Palette Interface"/> |
+| <img src=".assets/0main.jpg" width="220" alt="TUI Main Interface"/> | <img src=".assets/1install.jpg" width="220" alt="TUI Install Interface"/> | <img src=".assets/2pallete.jpg" width="220" alt="Menu Palette Interface"/> |
 | TUI main menu | Package install process | Command palette |
 
-> ✨ User-friendly with full **touchscreen** support
+> TUI User-friendly with full **touchscreen** support
+
+---
+
+<H1>CLI Interface</H1>
+
+| Other tools support | CLI Install Interface | CLI View Interface |
+|:---:|:---:|:---:|
+| <img src=".assets/0tas-and-termux-build.jpg" width="220" alt="Other tools support"/> | <img src=".assets/0cli-install.jpg" width="220" alt="CLI Install Interface"/> | <img src=".assets/0cli-view.jpg" width="220" alt="CLI View Interface"/> |
+| tasctl and termux-build | Package install process | CLI help, list and show |
+
+---
+
+<H1>GuideBook</H1>
+
+| List menu | Menu about | Menu how to upload |
+|:---:|:---:|:---:|
+| <img src=".assets/0guide-menu.png" width="220" alt="List menu"/> | <img src=".assets/0guide-about.png" width="220" alt="Menu about"/> | <img src=".assets/0guide-upload.png" width="220" alt="Menu how to upload"/> |
+| GuideBook main menu | Information termux-app-store | Guide how to upload |
+
+> GuideBook is a information, run: `python guidebook.py`
+
+---
+
+<H1>Screenrecord</H1>
+
+| Record `termux-app-store` TUI, CLI, Other tool `tasctl`, `termux-build`, `guidebook.py` |
+|:---:|
+| <img src=".assets/demo.gif" width="74%" alt="termux-app-store"/> | termux-app-store
 
 </div>
 
 ---
 
-## Quick Install
+# Quick Install and Uninstall
+
+### Option 1 (Recommended)
+```bash
+pkg install python
+pip install termux-app-store
+```
+
+### Option 2 (Manual)
+> Simple (Recommended for not download high memory)
+```bash
+curl -fsSL https://raw.githubusercontent.com/djunekz/termux-app-store/master/tasctl | bash -s install
+```
+
+or
+
+> With git clone (For download full files repository)
 ```bash
 git clone https://github.com/djunekz/termux-app-store
 cd termux-app-store
 bash install.sh
 ```
+
 or
-```bash
-curl -fsSL https://raw.githubusercontent.com/djunekz/termux-app-store/master/install.sh
-```
-or
+
 ```bash
 git clone https://github.com/djunekz/termux-app-store
 cd termux-app-store
 ./tasctl install
 ```
 
-Then run:
+After download and install then run:
 
 ```bash
 termux-app-store        # Open interactive TUI
@@ -95,7 +140,20 @@ termux-app-store -h     # Show CLI help
 
 ---
 
-## Usage
+## Uninstall
+```bash
+pip uninstall termux-app-store
+```
+
+or
+
+```bash
+./tasctl uninstall
+```
+
+---
+
+# Usage
 
 ### TUI — Interactive Interface
 ```bash
@@ -117,37 +175,37 @@ termux-app-store help                  # Full help
 
 ---
 
-## ✨ Features
+# Features
 
 <table>
 <tr>
 <td width="50%">
 
-**📦 Package Browser (TUI)**
+**Package Browser (TUI)**
 Browse packages from the `packages/` folder interactively with keyboard & touchscreen navigation.
 
-**🧠 Smart Build Validator**
+**Smart Build Validator**
 Detects unsupported Termux dependencies with automatic status badges.
 
-**🔍 Real-time Search & Filter**
+**Real-time Search & Filter**
 Instantly search packages by name or description — no reload needed.
 
-**⚡ One-Click Build**
+**One-Click Build**
 Install or update a package in one click via `build-package.sh`.
 
 </td>
 <td width="50%">
 
-**✅ One-Click Validator**
+**One-Click Validator**
 Validate packages before distribution via `./termux-build`.
 
-**🛠️ One-Click Manage**
+**One-Click Manage**
 Install / update / uninstall Termux App Store itself via `./tasctl`.
 
-**🧬 Self-Healing Path Resolver**
+**Self-Healing Path Resolver**
 Auto-detects app location even if the folder is moved or renamed.
 
-**🔐 Privacy-First**
+**Privacy-First**
 No account, no tracking, no telemetry — fully offline.
 
 </td>
@@ -156,7 +214,7 @@ No account, no tracking, no telemetry — fully offline.
 
 ---
 
-## Package Status Badges
+# Package Status Badges
 
 | Badge | Description |
 |---|---|
@@ -167,7 +225,7 @@ No account, no tracking, no telemetry — fully offline.
 
 ---
 
-## 🧩 Adding a Package
+# Adding a Package
 
 Every package **must** have a `build.sh` file:
 
@@ -191,14 +249,30 @@ TERMUX_PKG_SHA256=""
 > See the full template in `template/build.sh`
 > or run: `./termux-build template`
 
+# Adding a Package using termux-build
+
+Open directory termux-app-store
+```bash
+cd termux-app-store
+```
+Then run
+```bash
+./termux-build create nameyourtool
+```
+
+> [!NOTE]
+> When naming, do not use spaces, use the - sign in the name. For example: this-is-my-tool
+
 ---
 
-## 🛠️ termux-build — Validation Tool
+## termux-build — Build package and Validation Tool
 
-**termux-build** is a validation and reviewer helper tool — not an auto-upload or auto-publish tool.
+`termux-build` is a validation and reviewer helper tool — not an auto-upload or auto-publish tool.
 
 ```bash
+./termux-build create <package>      # Create package for distribution
 ./termux-build lint <package>        # Lint a build script
+./termux-build init <url-repo>       # Auto create and build package for distribution
 ./termux-build check-pr <package>    # Check PR readiness
 ./termux-build doctor                # Diagnose environment
 ./termux-build suggest <package>     # Get improvement suggestions
@@ -208,11 +282,34 @@ TERMUX_PKG_SHA256=""
 ```
 
 > [!NOTE]
-> termux-build **only reads and validates** — it does not modify files, auto-build, or upload to GitHub.
+> termux-build **only reads and validates** — it does not modify files, or upload to GitHub.
 
+## tasctl — Termux App Store Controller
+
+`tasctl` is a controller termux-app-store system
+
+```bash
+./tasctl install       # Install Termux App Store (latest)
+./tasctl update        # Update to latest version
+./tasctl uninstall     # Remove Termux App Store
+./tasctl doctor        # Diagnose environment
+./tasctl self-update   # Update tasctl itself
+./tasctl help          # Show this help
+```
+
+## guidebook — All Information Termux App Store
+
+`guidebook.py` is a information use, build, contributing to Termux App Store
+
+```bash
+python guidebook.py
+```
+
+> [!NOTE]
+> guidebook currently only supports two languages: English and Indonesia
 ---
 
-## Architecture
+# Architecture
 
 ```
 termux-app-store/
@@ -226,17 +323,17 @@ termux-app-store/
 └── install.sh             # Main installer
 ```
 
-> 📄 Full details: [ARCHITECTURE.md](ARCHITECTURE.md)
+> Full details: [ARCHITECTURE](ARCHITECTURE.md)
 
 ---
 
-## 🔐 Security & Privacy
+# Security & Privacy
 
 <table>
 <tr>
 <td width="50%">
 
-**🔐 Security**
+**Security**
 - No extra permissions required
 - No network ports opened
 - No background services running
@@ -245,7 +342,7 @@ termux-app-store/
 </td>
 <td width="50%">
 
-**🛡️ Privacy**
+**Privacy**
 - No account or registration
 - No analytics or tracking
 - No telemetry of any kind
@@ -255,11 +352,11 @@ termux-app-store/
 </tr>
 </table>
 
-> 📄 [SECURITY.md](SECURITY.md) &nbsp;|&nbsp; [PRIVACY.md](PRIVACY.md) &nbsp;|&nbsp; [DISCLAIMER.md](DISCLAIMER.md)
+> Full details: [SECURITY](SECURITY.md) &nbsp;|&nbsp; [PRIVACY](PRIVACY.md) &nbsp;|&nbsp; [DISCLAIMER](DISCLAIMER.md)
 
 ---
 
-## Upload Your Tool to Termux App Store
+# Upload Your Tool to Termux App Store
 
 Want to share your tool with the Termux community?
 
@@ -274,46 +371,46 @@ Want to share your tool with the Termux community?
 # 1. Fork this repo
 # 2. Add your package folder:
 mkdir packages/your-tool-name
-# 3. Create build.sh from the template
+# 3. Create build.sh from the template or with termux-build
 # 4. Validate with termux-build:
 ./termux-build lint packages/your-tool-name
 # 5. Submit a Pull Request
 ```
 
-> 📄 Full guide: [HOW_TO_UPLOAD.md](HOW_TO_UPLOAD.md)
+> Full guide: [How to upload package in termux-app-store](HOW_TO_UPLOAD.md)
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 All contributions are welcome!
 
 | How to Contribute | Description |
 |---|---|
-| 📦 Add a package | Submit a new tool package |
-| 🐛 Report a bug | Open an issue on GitHub |
-| 🔀 Send a PR | Code or documentation improvements |
-| 🔍 Review PRs | Help validate others' contributions |
-| 🔐 Security audit | Review build script security |
-| 📝 Improve docs | Clarify or translate documentation |
+| Add a package | Submit a new tool package |
+| Report a bug | Open an issue on GitHub |
+| Send a PR | Code or documentation improvements |
+| Review PRs | Help validate others' contributions |
+| Security audit | Review build script security |
+| Improve docs | Clarify or translate documentation |
 
-> 📄 Full guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+> Full guide: [CONTRIBUTING](CONTRIBUTING.md)
 
 ---
 
-## ❓ Help & Documentation
+## Help & Documentation
 
 | Document | Description |
 |---|---|
-| [FAQ.md](FAQ.md) | Frequently asked questions |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Solutions to common problems |
-| [HOW_TO_UPLOAD.md](HOW_TO_UPLOAD.md) | How to upload your tool |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guide |
-| [SUPPORT.md](SUPPORT.md) | How to get support |
+| [FAQ](FAQ.md) | Frequently asked questions |
+| [TROUBLESHOOTING](TROUBLESHOOTING.md) | Solutions to common problems |
+| [HOW TO UPLOAD](HOW_TO_UPLOAD.md) | How to upload your tool |
+| [CONTRIBUTING](CONTRIBUTING.md) | Contribution guide |
+| [SUPPORT](SUPPORT.md) | How to get support |
 
 ---
 
-## 🧠 Philosophy
+## Philosophy
 
 > *"Local first. Control over convenience. Transparency over magic."*
 
@@ -325,13 +422,13 @@ Termux App Store is built for users who want to:
 
 ---
 
-## 📜 License
+## License
 
 This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 👤 Maintainer
+## Maintainer
 
 <div align="center">
 
@@ -343,18 +440,18 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 
 ---
 
-## ⭐ Support This Project
+## Support This Project
 
 If Termux App Store has been useful to you:
 
-- ⭐ **Star** this repo — helps others discover it
-- 🧩 **Share** it in Termux & Android communities
-- 🐛 **Report bugs** via Issues
-- 🔀 **Submit a PR** for any improvement
+- **Star** this repo — helps others discover it
+- **Share** it in Termux & Android communities
+- **Report bugs** via Issues
+- **Submit a PR** for any improvement
 
 ---
 
-## ⭐ Star History
+## Star History
 
 [![Star History Chart](https://api.star-history.com/image?repos=djunekz/termux-app-store&type=date&legend=top-left)](https://www.star-history.com/?repos=djunekz%2Ftermux-app-store&type=date&legend=top-left)
 

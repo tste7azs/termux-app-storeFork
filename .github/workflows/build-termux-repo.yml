@@ -1,0 +1,197 @@
+name: Build Termux Repository
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'tools/index.json'
+      - 'termux_app_store/__init__.py'
+      - 'termux_app_store/main.py'
+      - 'termux_app_store/termux_app_store.py'
+      - 'termux_app_store/termux_app_store_cli.py'
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install tools
+        run: sudo apt-get install -y -qq dpkg-dev
+
+      - name: Read version and package count
+        id: meta
+        run: |
+          VERSION=$(python3 -c "
+          import re
+          with open('termux_app_store/__init__.py') as f:
+              m = re.search(r'__version__\s*=\s*[\"\']([\w.\-]+)', f.read())
+              print(m.group(1) if m else '0.0.0')
+          ")
+          TOTAL=$(python3 -c "
+          import json
+          with open('tools/index.json') as f:
+              d = json.load(f)
+          print(d.get('total', len(d.get('packages', []))))
+          ")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL"     >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION  |  Packages in index: $TOTAL"
+
+      - name: Build termux-app-store .deb for all architectures
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          mkdir -p output
+
+          LAUNCHER_B64="IyEvZGF0YS9kYXRhL2NvbS50ZXJtdXgvZmlsZXMvdXNyL2Jpbi9weXRob24zCmltcG9ydCBzeXMKc3lzLnBhdGguaW5zZXJ0KDAsICIvZGF0YS9kYXRhL2NvbS50ZXJtdXgvZmlsZXMvdXNyL2xpYi9weXRob24zL2Rpc3QtcGFja2FnZXMiKQpmcm9tIHRlcm11eF9hcHBfc3RvcmUubWFpbiBpbXBvcnQgbWFpbgptYWluKCkK"
+
+          for ARCH in aarch64 arm x86_64 i686; do
+            PKG_BUILD="build_tmp/termux-app-store_${ARCH}"
+            PREFIX="$PKG_BUILD/data/data/com.termux/files/usr"
+            PYDIR="$PREFIX/lib/python3/dist-packages/termux_app_store"
+            BINDIR="$PREFIX/bin"
+            mkdir -p "$PKG_BUILD/DEBIAN" "$PYDIR" "$BINDIR"
+
+            cp -r termux_app_store/. "$PYDIR/"
+
+            echo "$LAUNCHER_B64" | base64 -d > "$BINDIR/termux-app-store"
+            chmod +x "$BINDIR/termux-app-store"
+
+            INSTALLED_SIZE=$(du -sk "$PKG_BUILD/data" | cut -f1)
+            printf 'Package: termux-app-store\n'                                        > "$PKG_BUILD/DEBIAN/control"
+            printf 'Version: %s\n'           "$VERSION"                               >> "$PKG_BUILD/DEBIAN/control"
+            printf 'Architecture: %s\n'      "$ARCH"                                  >> "$PKG_BUILD/DEBIAN/control"
+            printf 'Maintainer: djunekz <gab288.gab288@passinbox.com>\n'              >> "$PKG_BUILD/DEBIAN/control"
+            printf 'Installed-Size: %s\n'    "$INSTALLED_SIZE"                        >> "$PKG_BUILD/DEBIAN/control"
+            printf 'Depends: python, python-pip\n'                                    >> "$PKG_BUILD/DEBIAN/control"
+            printf 'Homepage: https://github.com/djunekz/termux-app-store\n'          >> "$PKG_BUILD/DEBIAN/control"
+            printf 'Description: The first offline-first, source-based TUI package manager for Termux\n' >> "$PKG_BUILD/DEBIAN/control"
+
+            if dpkg-deb --build "$PKG_BUILD" "output/termux-app-store_${VERSION}_${ARCH}.deb" 2>/dev/null; then
+              echo "  [OK] termux-app-store_${VERSION}_${ARCH}.deb"
+            else
+              echo "  [FAIL] termux-app-store_${VERSION}_${ARCH}.deb"
+            fi
+          done
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - name: Initialize gh-pages if missing
+        run: |
+          if [ ! -d "gh-pages/.git" ]; then
+            mkdir -p gh-pages
+            cd gh-pages
+            git init
+            git remote add origin \
+              "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+            git checkout --orphan gh-pages
+          fi
+          for arch in aarch64 arm x86_64 i686; do
+            mkdir -p "gh-pages/dists/termux/main/binary-${arch}"
+          done
+          mkdir -p gh-pages/pool/main
+
+      - name: Update pool
+        run: |
+          rm -f gh-pages/pool/main/termux-app-store_*.deb
+          cp output/termux-app-store_*.deb gh-pages/pool/main/
+          echo "Pool contents:"
+          ls gh-pages/pool/main/
+
+      - name: Generate Packages index per architecture
+        run: |
+          cd gh-pages
+          FULL="/tmp/Packages_all"
+          dpkg-scanpackages pool/main /dev/null 2>/dev/null \
+            | sed 's|^Filename: pool/main/pool/main/|Filename: pool/main/|' \
+            > "$FULL"
+          for arch in aarch64 arm x86_64 i686; do
+            DIR="dists/termux/main/binary-${arch}"
+            mkdir -p "$DIR"
+            awk -v a="$arch" '
+              /^$/ { if (k) printf "%s\n", b; b=""; k=0; next }
+              /^Architecture:/ { if ($2==a||$2=="all") k=1 }
+              { b=b $0 "\n" }
+              END { if (k&&b!="") printf "%s\n", b }
+            ' "$FULL" > "$DIR/Packages"
+            rm -f "$DIR/Packages.gz"
+            gzip -k "$DIR/Packages"
+            echo "  [$arch] $(grep -c '^Package:' "$DIR/Packages") package(s)"
+          done
+          rm -f "$FULL"
+
+      - name: Generate Release file
+        run: |
+          cd gh-pages
+          {
+            printf 'Origin: Termux App Store\n'
+            printf 'Label: Termux App Store\n'
+            printf 'Suite: termux\n'
+            printf 'Codename: termux\n'
+            printf 'Components: main\n'
+            printf 'Architectures: aarch64 arm x86_64 i686\n'
+            printf 'Description: Official Termux repository by @djunekz\n'
+            printf 'Date: %s\n' "$(date -u '+%a, %d %b %Y %H:%M:%S UTC')"
+          } > dists/termux/Release
+          cd dists/termux
+          for algo in MD5Sum SHA256; do
+            echo "$algo:" >> Release
+            for arch in aarch64 arm x86_64 i686; do
+              for f in "main/binary-${arch}/Packages" "main/binary-${arch}/Packages.gz"; do
+                [ -f "$f" ] || continue
+                SIZE=$(wc -c < "$f")
+                if [ "$algo" = "MD5Sum" ]; then
+                  HASH=$(md5sum "$f" | cut -d' ' -f1)
+                else
+                  HASH=$(sha256sum "$f" | cut -d' ' -f1)
+                fi
+                echo " $HASH $SIZE $f" >> Release
+              done
+            done
+          done
+
+      - name: Copy install-repo.py
+        run: cp install-repo.py gh-pages/install-repo.py
+
+      - name: Generate index.html
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          TOTAL:   ${{ steps.meta.outputs.total }}
+        run: |
+          UPDATED=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          echo "aW1wb3J0IGpzb24sIHN5cywgb3MKCnZlcnNpb24gPSBvcy5lbnZpcm9uLmdldCgnVkVSU0lPTicsICcwLjAuMCcpCnRvdGFsICAgPSBvcy5lbnZpcm9uLmdldCgnVE9UQUwnLCAnMCcpCnVwZGF0ZWQgPSBvcy5lbnZpcm9uLmdldCgnVVBEQVRFRCcsICcnKQoKdHJ5OgogICAgd2l0aCBvcGVuKCd0b29scy9pbmRleC5qc29uJykgYXMgZjoKICAgICAgICBkYXRhID0ganNvbi5sb2FkKGYpCiAgICBwa2dzID0gZGF0YS5nZXQoJ3BhY2thZ2VzJywgW10pCmV4Y2VwdDoKICAgIHBrZ3MgPSBbXQoKcm93cyA9IFtdCmZvciBwIGluIHBrZ3M6CiAgICBuYW1lID0gcC5nZXQoJ3BhY2thZ2UnLCcnKQogICAgdmVyICA9IHAuZ2V0KCd2ZXJzaW9uJywnJykKICAgIGRlc2MgPSBwLmdldCgnZGVzY3JpcHRpb24nLCcnKS5yZXBsYWNlKCc8JywnJmx0OycpLnJlcGxhY2UoJz4nLCcmZ3Q7JykKICAgIGRlcCAgPSAnLCAnLmpvaW4ocC5nZXQoJ2RlcGVuZHMnLFtdKSkgb3IgJyZtZGFzaDsnCiAgICByb3dzLmFwcGVuZChmJzx0cj48dGQ+e25hbWV9PC90ZD48dGQ+e3Zlcn08L3RkPjx0ZD57ZGVzY308L3RkPjx0ZD57ZGVwfTwvdGQ+PC90cj4nKQpwa2dfcm93cyA9ICdcbicuam9pbihyb3dzKQoKaHRtbCA9IGYiIiI8IURPQ1RZUEUgaHRtbD4KPGh0bWwgbGFuZz0iZW4iPgo8aGVhZD4KPG1ldGEgY2hhcnNldD0iVVRGLTgiPgo8bWV0YSBuYW1lPSJ2aWV3cG9ydCIgY29udGVudD0id2lkdGg9ZGV2aWNlLXdpZHRoLCBpbml0aWFsLXNjYWxlPTEuMCI+Cjx0aXRsZT5UZXJtdXggQXBwIFN0b3JlPC90aXRsZT4KPHN0eWxlPgoqe3tib3gtc2l6aW5nOmJvcmRlci1ib3g7bWFyZ2luOjA7cGFkZGluZzowfX0KYm9keXt7Zm9udC1mYW1pbHk6J0NvdXJpZXIgTmV3Jyxtb25vc3BhY2U7YmFja2dyb3VuZDojMGQxMTE3O2NvbG9yOiNjOWQxZDk7cGFkZGluZzoyNHB4IDE2cHg7bGluZS1oZWlnaHQ6MS42fX0KLndyYXB7e21heC13aWR0aDo4ODBweDttYXJnaW46MCBhdXRvfX0KaDF7e2NvbG9yOiM1OGE2ZmY7Zm9udC1zaXplOjI0cHg7bWFyZ2luLWJvdHRvbTo0cHh9fQouc3Vie3tjb2xvcjojOGI5NDllO2ZvbnQtc2l6ZToxM3B4O21hcmdpbi1ib3R0b206MjBweH19Cmgye3tjb2xvcjojNzljMGZmO2ZvbnQtc2l6ZToxMXB4O2ZvbnQtd2VpZ2h0OmJvbGQ7bWFyZ2luOjI4cHggMCA4cHg7dGV4dC10cmFuc2Zvcm06dXBwZXJjYXNlO2xldHRlci1zcGFjaW5nOi4xZW19fQpwcmV7e2JhY2tncm91bmQ6IzE2MWIyMjtib3JkZXI6MXB4IHNvbGlkICMzMDM2M2Q7Ym9yZGVyLXJhZGl1czo4cHg7cGFkZGluZzoxNHB4O292ZXJmbG93LXg6YXV0bztmb250LXNpemU6MTNweH19CmNvZGV7e2NvbG9yOiM3ZWU3ODd9fQphe3tjb2xvcjojNThhNmZmO3RleHQtZGVjb3JhdGlvbjpub25lfX0KYTpob3Zlcnt7dGV4dC1kZWNvcmF0aW9uOnVuZGVybGluZX19CnRhYmxle3t3aWR0aDoxMDAlO2JvcmRlci1jb2xsYXBzZTpjb2xsYXBzZTtmb250LXNpemU6MTJweDttYXJnaW4tdG9wOjRweH19CnRoe3t0ZXh0LWFsaWduOmxlZnQ7cGFkZGluZzo2cHggMTBweDtjb2xvcjojOGI5NDllO2JvcmRlci1ib3R0b206MXB4IHNvbGlkICMyMTI2MmQ7Zm9udC13ZWlnaHQ6bm9ybWFsO2ZvbnQtc2l6ZToxMXB4O3RleHQtdHJhbnNmb3JtOnVwcGVyY2FzZX19CnRke3twYWRkaW5nOjVweCAxMHB4O2JvcmRlci1ib3R0b206MXB4IHNvbGlkICMxNjFiMjI7dmVydGljYWwtYWxpZ246dG9wfX0KdGQ6Zmlyc3QtY2hpbGR7e2NvbG9yOiM3ZWU3ODc7d2hpdGUtc3BhY2U6bm93cmFwfX0KdGQ6bnRoLWNoaWxkKDIpe3tjb2xvcjojZTNiMzQxO3doaXRlLXNwYWNlOm5vd3JhcH19CnRkOm50aC1jaGlsZCg0KXt7Y29sb3I6IzZlNzY4MTtmb250LXNpemU6MTFweH19CnRyOmhvdmVyIHRke3tiYWNrZ3JvdW5kOiMxNjFiMjJ9fQp0ci5oaWRkZW57e2Rpc3BsYXk6bm9uZX19Ci5iYWRnZXN7e2Rpc3BsYXk6ZmxleDtnYXA6NnB4O2ZsZXgtd3JhcDp3cmFwO21hcmdpbi1ib3R0b206MjBweH19Ci5iYWRnZXt7YmFja2dyb3VuZDojMWY2ZmViMjI7Y29sb3I6IzU4YTZmZjtib3JkZXI6MXB4IHNvbGlkICMxZjZmZWI1NTtmb250LXNpemU6MTFweDtwYWRkaW5nOjNweCAxMHB4O2JvcmRlci1yYWRpdXM6MTJweH19Ci5iYWRnZS5ncmVlbnt7YmFja2dyb3VuZDojMjM4NjM2MjI7Y29sb3I6IzNmYjk1MDtib3JkZXItY29sb3I6IzIzODYzNjU1fX0KLnZlcnNpb24tY2FyZHt7YmFja2dyb3VuZDojMTYxYjIyO2JvcmRlcjoxcHggc29saWQgIzMwMzYzZDtib3JkZXItcmFkaXVzOjhweDtwYWRkaW5nOjE0cHggMThweDttYXJnaW4tYm90dG9tOjIwcHg7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtnYXA6MTZweDtmbGV4LXdyYXA6d3JhcH19Ci52ZXJzaW9uLWxhYmVse3tjb2xvcjojOGI5NDllO2ZvbnQtc2l6ZToxMnB4O21hcmdpbi1ib3R0b206MnB4fX0KLnZlcnNpb24tbnVte3tjb2xvcjojM2ZiOTUwO2ZvbnQtc2l6ZToyNnB4O2ZvbnQtd2VpZ2h0OmJvbGR9fQoudmVyc2lvbi1jbWR7e2NvbG9yOiM0ODRmNTg7Zm9udC1zaXplOjEycHg7bWFyZ2luLWxlZnQ6YXV0b319CgovKiBDb3B5IGJ1dHRvbiAqLwouY29kZS1ibG9ja3t7cG9zaXRpb246cmVsYXRpdmV9fQouY29kZS1ibG9jayBwcmV7e3BhZGRpbmctcmlnaHQ6ODBweH19Ci5jb3B5LWJ0bnt7cG9zaXRpb246YWJzb2x1dGU7dG9wOjhweDtyaWdodDo4cHg7YmFja2dyb3VuZDojMjEyNjJkO2NvbG9yOiM4Yjk0OWU7Ym9yZGVyOjFweCBzb2xpZCAjMzAzNjNkO2JvcmRlci1yYWRpdXM6NnB4O3BhZGRpbmc6NHB4IDEwcHg7Zm9udC1zaXplOjExcHg7Zm9udC1mYW1pbHk6J0NvdXJpZXIgTmV3Jyxtb25vc3BhY2U7Y3Vyc29yOnBvaW50ZXI7dHJhbnNpdGlvbjphbGwgLjE1c319Ci5jb3B5LWJ0bjpob3Zlcnt7YmFja2dyb3VuZDojMzAzNjNkO2NvbG9yOiNjOWQxZDk7Ym9yZGVyLWNvbG9yOiM0ODRmNTh9fQouY29weS1idG4uY29waWVke3tjb2xvcjojM2ZiOTUwO2JvcmRlci1jb2xvcjojMmVhMDQzfX0KCi8qIFNlYXJjaCBib3ggKi8KLnNlYXJjaC13cmFwe3ttYXJnaW4tYm90dG9tOjE2cHh9fQouc2VhcmNoLWJveHt7d2lkdGg6MTAwJTtiYWNrZ3JvdW5kOiMxNjFiMjI7Ym9yZGVyOjFweCBzb2xpZCAjMzAzNjNkO2JvcmRlci1yYWRpdXM6OHB4O3BhZGRpbmc6MTBweCAxNHB4IDEwcHggMzZweDtjb2xvcjojYzlkMWQ5O2ZvbnQtZmFtaWx5OidDb3VyaWVyIE5ldycsbW9ub3NwYWNlO2ZvbnQtc2l6ZToxM3B4O291dGxpbmU6bm9uZTt0cmFuc2l0aW9uOmJvcmRlciAuMTVzO2JhY2tncm91bmQtaW1hZ2U6dXJsKCJkYXRhOmltYWdlL3N2Zyt4bWwsJTNDc3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgd2lkdGg9JzE2JyBoZWlnaHQ9JzE2JyBmaWxsPSdub25lJyBzdHJva2U9JyUyMzhiOTQ5ZScgc3Ryb2tlLXdpZHRoPScyJyB2aWV3Qm94PScwIDAgMjQgMjQnJTNFJTNDY2lyY2xlIGN4PScxMScgY3k9JzExJyByPSc4Jy8lM0UlM0NwYXRoIGQ9J20yMSAyMS00LjM1LTQuMzUnLyUzRSUzQy9zdmclM0UiKTtiYWNrZ3JvdW5kLXJlcGVhdDpuby1yZXBlYXQ7YmFja2dyb3VuZC1wb3NpdGlvbjoxMnB4IGNlbnRlcn19Ci5zZWFyY2gtYm94OmZvY3Vze3tib3JkZXItY29sb3I6IzU4YTZmZn19Ci5zZWFyY2gtYm94OjpwbGFjZWhvbGRlcnt7Y29sb3I6IzQ4NGY1OH19Ci5zZWFyY2gtY291bnR7e2NvbG9yOiM4Yjk0OWU7Zm9udC1zaXplOjExcHg7bWFyZ2luLXRvcDo2cHg7bWluLWhlaWdodDoxNnB4fX0KCmZvb3Rlcnt7bWFyZ2luLXRvcDo0OHB4O2NvbG9yOiM0ODRmNTg7Zm9udC1zaXplOjEycHg7Ym9yZGVyLXRvcDoxcHggc29saWQgIzIxMjYyZDtwYWRkaW5nLXRvcDoxNnB4fX0KPC9zdHlsZT4KPC9oZWFkPgo8Ym9keT4KPGRpdiBjbGFzcz0id3JhcCI+Cgo8aDE+VGVybXV4IEFwcCBTdG9yZTwvaDE+CjxwIGNsYXNzPSJzdWIiPmJ5IDxhIGhyZWY9Imh0dHBzOi8vZ2l0aHViLmNvbS9kanVuZWt6Ij5AZGp1bmVrejwvYT4gJm5ic3A7Jm1pZGRvdDsmbmJzcDsKICA8YSBocmVmPSJodHRwczovL2dpdGh1Yi5jb20vZGp1bmVrei90ZXJtdXgtYXBwLXN0b3JlIj5HaXRIdWI8L2E+PC9wPgoKPGRpdiBjbGFzcz0idmVyc2lvbi1jYXJkIj4KICA8ZGl2PgogICAgPGRpdiBjbGFzcz0idmVyc2lvbi1sYWJlbCI+dGVybXV4LWFwcC1zdG9yZTwvZGl2PgogICAgPGRpdiBjbGFzcz0idmVyc2lvbi1udW0iPnZ7dmVyc2lvbn08L2Rpdj4KICA8L2Rpdj4KICA8ZGl2IGNsYXNzPSJ2ZXJzaW9uLWNtZCI+cGtnIGluc3RhbGwgdGVybXV4LWFwcC1zdG9yZTwvZGl2Pgo8L2Rpdj4KCjxkaXYgY2xhc3M9ImJhZGdlcyI+CiAgPHNwYW4gY2xhc3M9ImJhZGdlIGdyZWVuIj57dG90YWx9IHBhY2thZ2VzIGluIGluZGV4PC9zcGFuPgogIDxzcGFuIGNsYXNzPSJiYWRnZSI+YWFyY2g2NDwvc3Bhbj4KICA8c3BhbiBjbGFzcz0iYmFkZ2UiPmFybTwvc3Bhbj4KICA8c3BhbiBjbGFzcz0iYmFkZ2UiPng4Nl82NDwvc3Bhbj4KICA8c3BhbiBjbGFzcz0iYmFkZ2UiPmk2ODY8L3NwYW4+CjwvZGl2PgoKPGgyPlF1aWNrIFNldHVwPC9oMj4KPGRpdiBjbGFzcz0iY29kZS1ibG9jayI+CjxwcmU+PGNvZGU+Y3VybCAtZnNTTCBodHRwczovL2RqdW5la3ouZ2l0aHViLmlvL3Rlcm11eC1hcHAtc3RvcmUvaW5zdGFsbC1yZXBvLnB5IHwgcHl0aG9uPC9jb2RlPjwvcHJlPgo8YnV0dG9uIGNsYXNzPSJjb3B5LWJ0biIgb25jbGljaz0iY29weUNvZGUodGhpcywgJ2N1cmwgLWZzU0wgaHR0cHM6Ly9kanVuZWt6LmdpdGh1Yi5pby90ZXJtdXgtYXBwLXN0b3JlL2luc3RhbGwtcmVwby5weSB8IHB5dGhvbicpIj5jb3B5PC9idXR0b24+CjwvZGl2PgoKPGgyPlVzYWdlPC9oMj4KPGRpdiBjbGFzcz0iY29kZS1ibG9jayI+CjxwcmU+PGNvZGUgaWQ9InVzYWdlLWNvZGUiPnBrZyBpbnN0YWxsIHRlcm11eC1hcHAtc3RvcmUgICAgICMgaW5zdGFsbApwa2cgdXBncmFkZSB0ZXJtdXgtYXBwLXN0b3JlICAgICAgIyB1cGRhdGUgdG8gdnt2ZXJzaW9ufQpwa2cgdW5pbnN0YWxsIHRlcm11eC1hcHAtc3RvcmUgICAgIyByZW1vdmUKdGVybXV4LWFwcC1zdG9yZSAgICAgICAgICAgICAgICAgICMgbGF1bmNoIFRVSQp0ZXJtdXgtYXBwLXN0b3JlIGxpc3QgICAgICAgICAgICAgIyBzaG93IGFsbCB7dG90YWx9IHBhY2thZ2VzCnRlcm11eC1hcHAtc3RvcmUgaW5zdGFsbCAmbHQ7cGtnJmd0OyAgICMgaW5zdGFsbCBhIHBhY2thZ2U8L2NvZGU+PC9wcmU+CjxidXR0b24gY2xhc3M9ImNvcHktYnRuIiBvbmNsaWNrPSJjb3B5Q29kZSh0aGlzLCBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgndXNhZ2UtY29kZScpLmlubmVyVGV4dCkiPmNvcHk8L2J1dHRvbj4KPC9kaXY+Cgo8aDI+QWxsIHBhY2thZ2VzICh7dG90YWx9KTwvaDI+CjxkaXYgY2xhc3M9InNlYXJjaC13cmFwIj4KICA8aW5wdXQgY2xhc3M9InNlYXJjaC1ib3giIHR5cGU9InRleHQiIGlkPSJzZWFyY2hJbnB1dCIgcGxhY2Vob2xkZXI9IlNlYXJjaCBwYWNrYWdlcy4uLiIgb25pbnB1dD0iZmlsdGVyVGFibGUoKSI+CiAgPGRpdiBjbGFzcz0ic2VhcmNoLWNvdW50IiBpZD0ic2VhcmNoQ291bnQiPjwvZGl2Pgo8L2Rpdj4KPHRhYmxlIGlkPSJwa2dUYWJsZSI+Cjx0aGVhZD48dHI+PHRoPlBhY2thZ2U8L3RoPjx0aD5WZXJzaW9uPC90aD48dGg+RGVzY3JpcHRpb248L3RoPjx0aD5EZXBlbmRzPC90aD48L3RyPjwvdGhlYWQ+Cjx0Ym9keT4Ke3BrZ19yb3dzfQo8L3Rib2R5Pgo8L3RhYmxlPgoKPGgyPlJlcG9zaXRvcnkgZW5kcG9pbnRzPC9oMj4KPGRpdiBjbGFzcz0iY29kZS1ibG9jayI+CjxwcmU+PGNvZGU+ZGlzdHMvdGVybXV4L21haW4vYmluYXJ5LWFhcmNoNjQvUGFja2FnZXMKZGlzdHMvdGVybXV4L21haW4vYmluYXJ5LWFybS9QYWNrYWdlcwpkaXN0cy90ZXJtdXgvbWFpbi9iaW5hcnkteDg2XzY0L1BhY2thZ2VzCmRpc3RzL3Rlcm11eC9tYWluL2JpbmFyeS1pNjg2L1BhY2thZ2VzPC9jb2RlPjwvcHJlPgo8YnV0dG9uIGNsYXNzPSJjb3B5LWJ0biIgb25jbGljaz0iY29weUNvZGUodGhpcywgJ2Rpc3RzL3Rlcm11eC9tYWluL2JpbmFyeS1hYXJjaDY0L1BhY2thZ2VzXFxuZGlzdHMvdGVybXV4L21haW4vYmluYXJ5LWFybS9QYWNrYWdlc1xcbmRpc3RzL3Rlcm11eC9tYWluL2JpbmFyeS14ODZfNjQvUGFja2FnZXNcXG5kaXN0cy90ZXJtdXgvbWFpbi9iaW5hcnktaTY4Ni9QYWNrYWdlcycpIj5jb3B5PC9idXR0b24+CjwvZGl2PgoKPGZvb3Rlcj5MYXN0IHVwZGF0ZWQ6IHt1cGRhdGVkfTwvZm9vdGVyPgo8L2Rpdj4KCjxzY3JpcHQ+CmZ1bmN0aW9uIGNvcHlDb2RlKGJ0biwgdGV4dCkge3sKICBuYXZpZ2F0b3IuY2xpcGJvYXJkLndyaXRlVGV4dCh0ZXh0KS50aGVuKCgpID0+IHt7CiAgICBidG4udGV4dENvbnRlbnQgPSAnY29waWVkISc7CiAgICBidG4uY2xhc3NMaXN0LmFkZCgnY29waWVkJyk7CiAgICBzZXRUaW1lb3V0KCgpID0+IHt7IGJ0bi50ZXh0Q29udGVudCA9ICdjb3B5JzsgYnRuLmNsYXNzTGlzdC5yZW1vdmUoJ2NvcGllZCcpOyB9fSwgMjAwMCk7CiAgfX0pOwp9fQoKZnVuY3Rpb24gZmlsdGVyVGFibGUoKSB7ewogIGNvbnN0IHEgPSBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnc2VhcmNoSW5wdXQnKS52YWx1ZS50b0xvd2VyQ2FzZSgpOwogIGNvbnN0IHJvd3MgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCcjcGtnVGFibGUgdGJvZHkgdHInKTsKICBsZXQgdmlzaWJsZSA9IDA7CiAgcm93cy5mb3JFYWNoKHJvdyA9PiB7ewogICAgY29uc3QgbmFtZSA9IHJvdy5jZWxsc1swXT8udGV4dENvbnRlbnQudG9Mb3dlckNhc2UoKSB8fCAnJzsKICAgIGNvbnN0IGRlc2MgPSByb3cuY2VsbHNbMl0/LnRleHRDb250ZW50LnRvTG93ZXJDYXNlKCkgfHwgJyc7CiAgICBjb25zdCBtYXRjaCA9IG5hbWUuaW5jbHVkZXMocSkgfHwgZGVzYy5pbmNsdWRlcyhxKTsKICAgIHJvdy5jbGFzc0xpc3QudG9nZ2xlKCdoaWRkZW4nLCAhbWF0Y2gpOwogICAgaWYgKG1hdGNoKSB2aXNpYmxlKys7CiAgfX0pOwogIGNvbnN0IHRvdGFsID0gcm93cy5sZW5ndGg7CiAgY29uc3QgY291bnRFbCA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdzZWFyY2hDb3VudCcpOwogIGlmIChxKSB7ewogICAgY291bnRFbC50ZXh0Q29udGVudCA9IHZpc2libGUgKyAnIG9mICcgKyB0b3RhbCArICcgcGFja2FnZXMgbWF0Y2gnOwogIH19IGVsc2Uge3sKICAgIGNvdW50RWwudGV4dENvbnRlbnQgPSAnJzsKICB9fQp9fQo8L3NjcmlwdD4KPC9ib2R5Pgo8L2h0bWw+IiIiCgpwcmludChodG1sKQo=" \
+            | base64 -d > /tmp/gen_index.py
+
+          UPDATED="$UPDATED" python3 /tmp/gen_index.py > gh-pages/index.html
+          echo "index.html generated ($(wc -c < gh-pages/index.html) bytes)"
+
+      - name: Commit and push to gh-pages
+        run: |
+          cd gh-pages
+          git config user.email "258516621+termux-app-store@users.noreply.github.com"
+          git config user.name "Termux App Store"
+          git add -A
+          VERSION="${{ steps.meta.outputs.version }}"
+          TOTAL="${{ steps.meta.outputs.total }}"
+          MSG="repo: termux-app-store v${VERSION}, ${TOTAL} pkgs in index [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
+          if git rev-parse HEAD >/dev/null 2>&1; then
+            if git diff --staged --quiet; then
+              echo "Nothing to commit"
+            else
+              git commit -m "$MSG"
+              git push origin HEAD:gh-pages
+            fi
+          else
+            git commit -m "$MSG"
+            git push origin HEAD:gh-pages
+          fi

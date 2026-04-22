@@ -1,12 +1,12 @@
 {
   "version": "1.0",
   "repository": "https://github.com/djunekz/termux-app-store",
-  "generated_at": "2026-04-04T02:29:59.600061+00:00",
-  "total": 24,
+  "generated_at": "2026-04-22T02:50:54.026358+00:00",
+  "total": 50,
   "packages": [
     {
       "package": "ani-cli",
-      "version": "4.10",
+      "version": "4.11",
       "maintainer": "@termux-app-store",
       "description": "A cli tool to browse and play anime",
       "homepage": "https://github.com/pystardust/ani-cli",
@@ -15,15 +15,16 @@
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/pystardust/ani-cli/releases/download/v${TERMUX_PKG_VERSION}/ani-cli",
-      "sha256": "38599dc5bb65a5b9f78e936ed42ffe16b62095dbc6621a5b578ed3e29aac4f3e",
+      "sha256": "1f35c47b0c6d924261d096663d16b03d489f488fcc38c74e4fe87b45a330b7cf",
       "platform_independent": false,
       "depends": [
-        "nodejs"
+        "nodejs",
+        "fzf"
       ]
     },
     {
       "package": "aura",
-      "version": "0.8.2",
+      "version": "0.10.0",
       "maintainer": "@termux-app-store",
       "description": "Adaptive Unified Runtime Assistant",
       "homepage": "https://github.com/djunekz/aura",
@@ -32,10 +33,29 @@
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/djunekz/aura/archive/refs/tags/v${TERMUX_PKG_VERSION}.zip",
-      "sha256": "918656afc31dfbda1189f4ece91e07a3d7299982c3d7951fd1808f59416e0268",
+      "sha256": "f9cfa5f137ad035f35faace06f00eb61d368e39c24a12521da1ff1bac235d630",
       "platform_independent": false,
       "depends": [
         "nodejs"
+      ]
+    },
+    {
+      "package": "auxscan",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Vulnerability Scanner to automate certain tasks",
+      "homepage": "https://github.com/Gameye98/Auxscan",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Gameye98/Auxscan/archive/refs/heads/master.tar.gz",
+      "sha256": "fc66c68f438df226328b6a78347c9862e33b9e30e60c3e0e73b57033c60a9631",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
       ]
     },
     {
@@ -48,8 +68,8 @@
       "download_size": "Unknown",
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://github.com/djunekz/bashxt/releases/download/v${TERMUX_PKG_VERSION}/bashxt.tar.gz",
-      "sha256": "b9b27f232d6a752f3243e915d98bb03ecbd982f37e45243d7b82905f745e9512",
+      "srcurl": "https://github.com/djunekz/bashxt/releases/download/v${TERMUX_PKG_VERSION}/bashxt_${TERMUX_PKG_VERSION}_all.deb",
+      "sha256": "d4ed7c6021bc1c22b5441d1ba1ba94187504fffc2a7bb73bc2ebe8ff6adf7f7d",
       "platform_independent": false
     },
     {
@@ -104,6 +124,84 @@
       ]
     },
     {
+      "package": "clickjacking-tester",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "A python script designed to check if the website if vulnerable of clickjacking and create a poc",
+      "homepage": "https://github.com/D4Vinci/Clickjacking-Tester",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/D4Vinci/Clickjacking-Tester/archive/refs/heads/master.tar.gz",
+      "sha256": "21c128c44d965ee337c8f946c07144de3a2a8d14320364015312870abe2267d3",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "cmseek",
+      "version": "1.1.3",
+      "maintainer": "@termux-app-store",
+      "description": "CMS Detection and Exploitation suite - Scan WordPress, Joomla, Drupal and over 180 other CMSs",
+      "homepage": "https://github.com/Tuhinshubhra/CMSeeK",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Tuhinshubhra/CMSeeK/archive/refs/tags/v.1.1.3.tar.gz",
+      "sha256": "2e7562c7d9e131cc0a3623922df92fbfd98dd8e8e6b0321002c4fd5e06531249",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "cmsmap",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "CMSmap is a python open source CMS scanner that automates the process of detecting security flaws of the most popular CMSs.",
+      "homepage": "https://github.com/Dionach/CMSmap",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Dionach/CMSmap/archive/refs/heads/master.tar.gz",
+      "sha256": "da902ef29ca2c464a100b51b596bfd31066a68a825fc2522d24f415aed5413c2",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "cybertuz",
+      "version": "1.0.1",
+      "maintainer": "@termux-app-store",
+      "description": "Comprehensive Educational Learning Platform for Termux",
+      "homepage": "https://github.com/djunekz/cybertuz",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/djunekz/cybertuz/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz",
+      "sha256": "de6f948ecfe97e875bdbabe2073671da29a8521de465ad6a577476749a9fef59",
+      "platform_independent": true,
+      "depends": [
+        "nmap",
+        "python",
+        "whois",
+        "curl",
+        "dnsutils"
+      ]
+    },
+    {
       "package": "encrypt",
       "version": "1.1",
       "maintainer": "@djunekz",
@@ -119,7 +217,7 @@
     },
     {
       "package": "fd",
-      "version": "10.3.0",
+      "version": "10.4.2",
       "maintainer": "@termux-app-store",
       "description": "A simple, fast and user-friendly alternative to 'find'",
       "homepage": "https://github.com/sharkdp/fd",
@@ -128,8 +226,131 @@
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/sharkdp/fd/releases/download/v${TERMUX_PKG_VERSION}/fd-v${TERMUX_PKG_VERSION}-aarch64-unknown-linux-musl.tar.gz",
-      "sha256": "996b9b1366433b211cb3bbedba91c9dbce2431842144d925428ead0adf32020b",
+      "sha256": "f32d3657473fba74e2600babc8db0b93420d51169223b7e8143b2ed55d8fd9e8",
       "platform_independent": false
+    },
+    {
+      "package": "gemail-hack",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "python script for Hack gmail account brute force",
+      "homepage": "https://github.com/Ha3MrX/Gemail-Hack",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Ha3MrX/Gemail-Hack/archive/refs/heads/master.tar.gz",
+      "sha256": "36dfa4b305e8b7660ae92e817254545e4aa6b5daf23446a2a4c475e3aef6cde9",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "ghosttrack",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Useful tool to track location or mobile number",
+      "homepage": "https://github.com/HunxByts/GhostTrack",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/HunxByts/GhostTrack/archive/refs/heads/main.tar.gz",
+      "sha256": "83934fc3b54ba51a2e44855380602b722dd5efb572259e3d462e0b14d32bef62",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "goblinwordgenerator",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Python wordlist generator",
+      "homepage": "https://github.com/UndeadSec/GoblinWordGenerator",
+      "license": "BSD-3-Clause",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/UndeadSec/GoblinWordGenerator/archive/refs/heads/master.tar.gz",
+      "sha256": "4751cc403e2bffd0540036ddc6c8fa2ec7cc50ac129bbeb17b6206d433b4f871",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "hammer",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Ddos attack tool for termux",
+      "homepage": "https://github.com/TermuxHackz/Hammer",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/TermuxHackz/Hammer/archive/refs/heads/master.tar.gz",
+      "sha256": "d1b392377d0432efde5936a392e2b268bddff7d888b79bd5d19e13f089de8861",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "hash-buster",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "hash-buster — auto-packaged by termux-build-init",
+      "homepage": "https://github.com/UltimateHackers/Hash-Buster",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/UltimateHackers/Hash-Buster/archive/refs/heads/master.tar.gz",
+      "sha256": "16f9d31e08336b37ff52ac9cfc5f6884bcd3481f5ee2388f5f8760f4e87c2718",
+      "platform_independent": false
+    },
+    {
+      "package": "ht-wps-breaker",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "HT-WPS Breaker (High Touch WPS Breaker)",
+      "homepage": "https://github.com/SilentGhostX/HT-WPS-Breaker",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/SilentGhostX/HT-WPS-Breaker/archive/refs/heads/master.tar.gz",
+      "sha256": "556101fa55aeb073d0a2908f1d667e34eeefbcbdb38c8723b7f862352d40f848",
+      "platform_independent": false
+    },
+    {
+      "package": "hunner",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Hacking framework",
+      "homepage": "https://github.com/b3-v3r/Hunner",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/b3-v3r/Hunner/archive/refs/heads/master.tar.gz",
+      "sha256": "b6bab1ead55f9e1eb54abf04fbad3f718319a375091bcc04e17cfeff9a0f17eb",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
     },
     {
       "package": "impulse",
@@ -143,7 +364,10 @@
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/impulse.tar.gz",
       "sha256": "d03e1a4c74a09b63900ffd1bc889bbc8f5720b83914b1a2fdd5453fb23a63c18",
-      "platform_independent": false
+      "platform_independent": true,
+      "depends": [
+        "python"
+      ]
     },
     {
       "package": "infoooze",
@@ -163,6 +387,92 @@
       ]
     },
     {
+      "package": "instareporter",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Instagram Mass Reporting Tool",
+      "homepage": "https://github.com/muneebwanee/InstaReporter",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/muneebwanee/InstaReporter/archive/refs/heads/main.tar.gz",
+      "sha256": "4bc7fdce74559f3148fc5620b9990639cad7ff08984fa09152c4843b4587a888",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "ip-tracker",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Track anyone's IP just opening a link!",
+      "homepage": "https://kasroudra.github.io/IP-Tracker",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/KasRoudra/IP-Tracker/archive/refs/heads/main.tar.gz",
+      "sha256": "09c7aeeb82bf67868283d398d51f775985d4f43500f0edfdd03b84ac9067b777",
+      "platform_independent": false
+    },
+    {
+      "package": "ipgeolocation",
+      "version": "2.0.4",
+      "maintainer": "@termux-app-store",
+      "description": "Retrieve IP Geolocation information",
+      "homepage": "https://github.com/maldevel/IPGeoLocation",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/maldevel/IPGeoLocation/archive/refs/tags/2.0.4.tar.gz",
+      "sha256": "fabc086113f89f9e8fe1ed7fbfec776780d43df63c67401c48b8f36948fa9ecb",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "lalin",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "this script automatically install any package for pentest with uptodate tools , and lazy command for run the tools like lazynmap , install another and update to new #actually for lazy people hahaha #and Lalin is remake the lazykali with fixed bugs , added new features and uptodate tools . It's compatible with the latest release of Kali (Rolling)",
+      "homepage": "https://github.com/Screetsec/LALIN",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Screetsec/LALIN/archive/refs/heads/master.tar.gz",
+      "sha256": "f6d8f683a7cfea3ea7da10562976efdedd380bcbb61108702342564acbcf644e",
+      "platform_independent": false
+    },
+    {
+      "package": "lazymux",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "termux tool installer",
+      "homepage": "https://github.com/Gameye98/Lazymux",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Gameye98/Lazymux/archive/refs/heads/master.tar.gz",
+      "sha256": "a5036eec654ad1adf3736317104ec9fedd97511fe3ba8ccd956fe7bea431afcd",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-core",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
       "package": "lux",
       "version": "0.24.1",
       "maintainer": "@termux-app-store",
@@ -175,6 +485,45 @@
       "srcurl": "https://github.com/iawia002/lux/releases/download/v${TERMUX_PKG_VERSION}/lux_${TERMUX_PKG_VERSION}_Linux_arm64.tar.gz",
       "sha256": "479b09290b8ddda43c994ec5685649eb4635f4bd24ff24e494eddaae473879d7",
       "platform_independent": false
+    },
+    {
+      "package": "myserver",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "myserver — auto-packaged by termux-build-init",
+      "homepage": "https://github.com/Rajkumrdusad/MyServer",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Rajkumrdusad/MyServer/archive/refs/heads/master.tar.gz",
+      "sha256": "459a6caf18c8c70558a988b88c75be2d8512a165a034e3782a661967d26a9a43",
+      "platform_independent": false,
+      "depends": [
+        "php",
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "parsero",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Parsero | Robots.txt audit tool",
+      "homepage": "http://www.behindthefirewalls.com/",
+      "license": "GPL-2.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/behindthefirewalls/Parsero/archive/refs/heads/master.tar.gz",
+      "sha256": "bc34afddf5b902ae8fb64c5e3ab2007f651a0b9fe42d1169fabacfc7c750ed44",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
     },
     {
       "package": "pmcli",
@@ -212,7 +561,7 @@
     {
       "package": "pymaker",
       "version": "1.0.0",
-      "maintainer": "@droidv1",
+      "maintainer": "@termux-app-store",
       "description": "Simple tool for create python script",
       "homepage": "https://github.com/droidv1/pymaker",
       "license": "MIT",
@@ -221,11 +570,31 @@
       "source": "https://github.com/djunekz/termux-app-store",
       "srcurl": "https://github.com/djunekz/archive/releases/download/v${TERMUX_PKG_VERSION}/pymaker-${TERMUX_PKG_VERSION}.tar.gz",
       "sha256": "2fe03f6839e7b550f888d477628b852d648ea4ed688643122d3c182d495564e4",
-      "platform_independent": false
+      "platform_independent": true,
+      "depends": [
+        "python"
+      ]
+    },
+    {
+      "package": "red-hawk",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "All in one tool for Information Gathering, Vulnerability Scanning and Crawling. A must have tool for all penetration testers",
+      "homepage": "https://github.com/Tuhinshubhra/RED_HAWK",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Tuhinshubhra/RED_HAWK/archive/refs/heads/master.tar.gz",
+      "sha256": "5988892dcea9993e7388c41c1d98c284774fb27866c6ff61e53815ef04a07077",
+      "platform_independent": false,
+      "depends": [
+        "php"
+      ]
     },
     {
       "package": "sigit",
-      "version": "2.0-pre",
+      "version": "2.0",
       "maintainer": "@termux-app-store",
       "description": "SIGIT - Simple Information Gathering Toolkit",
       "homepage": "https://github.com/termuxhackers-id/SIGIT",
@@ -233,9 +602,28 @@
       "download_size": "Unknown",
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://api.github.com/repos/termuxhackers-id/SIGIT/tarball/2.0-pre",
+      "srcurl": "https://api.github.com/repos/termuxhackers-id/SIGIT/tarball/${TERMUX_PKG_VERSION}-pre",
       "sha256": "2bfe129b478dc758133f6380dc5f1c27da8af2c3cfe7327e826d4f974e20c993",
       "platform_independent": false
+    },
+    {
+      "package": "sublist3r",
+      "version": "1.1",
+      "maintainer": "@termux-app-store",
+      "description": "Fast subdomains enumeration tool for penetration testers",
+      "homepage": "https://github.com/aboul3la/Sublist3r",
+      "license": "GPL-2.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/aboul3la/Sublist3r/archive/refs/tags/1.1.tar.gz",
+      "sha256": "7bb915954bb0db9a8f0a3be2a38bc77e932174be5e8d02c7d5dd4bc56ec30195",
+      "platform_independent": false,
+      "depends": [
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
     },
     {
       "package": "tdoc",
@@ -274,6 +662,71 @@
       "platform_independent": false
     },
     {
+      "package": "termux-ai",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Interactive AI tool for Termux with 10+ providers and 50+ image models ✨",
+      "homepage": "https://github.com/Anon4You/Termux-Ai",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Anon4You/Termux-Ai/archive/refs/heads/main.tar.gz",
+      "sha256": "ca5e517ef81e8ef94bc9433514cae4ab305d79f76bc1d7682b2d5f85d41bf8b6",
+      "platform_independent": false
+    },
+    {
+      "package": "termux-sync",
+      "version": "0.1.0",
+      "maintainer": "@termux-app-store",
+      "description": "OpenSource Backup and restore your entire Termux environment across devices.",
+      "homepage": "https://github.com/djunekz/termux-sync",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/djunekz/termux-sync/archive/refs/tags/v${TERMUX_PKG_VERSION}.tar.gz",
+      "sha256": "710480ce4acb07e5f423b2f7b5da97c328106e6f8401296636faeb63e954fb77",
+      "platform_independent": false,
+      "depends": [
+        "git",
+        "python",
+        "python-pip",
+        "python-setuptools"
+      ]
+    },
+    {
+      "package": "termuxalpine",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Use TermuxAlpine.sh calling to install Alpine Linux in Termux on Android. This setup script will attempt to set Alpine Linux up in your Termux environment.",
+      "homepage": "https://github.com/Hax4us/TermuxAlpine",
+      "license": "MIT",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/Hax4us/TermuxAlpine/archive/refs/heads/master.tar.gz",
+      "sha256": "2dae317bcce989a909f171c1843db9479012bcbbb23cc8f729cc73ce4d8af6fa",
+      "platform_independent": false
+    },
+    {
+      "package": "the-eye",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "Simple security surveillance script for linux distributions.",
+      "homepage": "https://github.com/EgeBalci/The-Eye",
+      "license": "GPL-3.0",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/EgeBalci/The-Eye/archive/refs/heads/master.tar.gz",
+      "sha256": "a32f2b55436731b6347ef4c6ead5d9465e708414eda7323d0b4c63f29dde4765",
+      "platform_independent": false,
+      "depends": [
+        "golang"
+      ]
+    },
+    {
       "package": "tuifimanager",
       "version": "5.2.6",
       "maintainer": "@termux-app-store",
@@ -309,8 +762,22 @@
       ]
     },
     {
+      "package": "userfinder",
+      "version": "1.0.0",
+      "maintainer": "@termux-app-store",
+      "description": "userfinder — auto-packaged by termux-build-init",
+      "homepage": "https://github.com/mishakorzik/UserFinder",
+      "license": "UNKNOWN",
+      "download_size": "Unknown",
+      "installed_size": "Unknown",
+      "source": "https://github.com/djunekz/termux-app-store",
+      "srcurl": "https://github.com/mishakorzik/UserFinder/archive/refs/heads/master.tar.gz",
+      "sha256": "fa6bffdffae84402230f19a2d4a740ebd9b731711fb5198c78dfe6c23120526b",
+      "platform_independent": false
+    },
+    {
       "package": "uv",
-      "version": "0.10.4",
+      "version": "0.11.7",
       "maintainer": "@termux-app-store",
       "description": "An extremely fast Python package and project manager, written in Rust.",
       "homepage": "https://github.com/astral-sh/uv",
@@ -318,8 +785,8 @@
       "download_size": "Unknown",
       "installed_size": "Unknown",
       "source": "https://github.com/djunekz/termux-app-store",
-      "srcurl": "https://github.com/astral-sh/uv/releases/download/0.10.4/uv-aarch64-unknown-linux-musl.tar.gz",
-      "sha256": "82fc461031dafb130af761e7dbec1bcc51b826c2e664f5bf8bc4e4f8330320cd",
+      "srcurl": "https://github.com/astral-sh/uv/releases/download/${TERMUX_PKG_VERSION}/uv-aarch64-unknown-linux-musl.tar.gz",
+      "sha256": "46647dc16cbb7d6700f762fdd7a67d220abe18570914732bc310adc91308d272",
       "platform_independent": false
     },
     {

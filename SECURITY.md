@@ -7,7 +7,7 @@ validate Termux packages, therefore **supply-chain integrity** and
 
 ---
 
-## 🔐 Supported Versions
+## Supported Versions
 
 Security fixes apply to:
 - The `master` branch
@@ -17,13 +17,13 @@ Older versions may not receive security updates.
 
 ---
 
-## 🚨 Reporting a Vulnerability
+## Reporting a Vulnerability
 
 **Do NOT report security issues via public GitHub issues.**
 
 If you discover a vulnerability, please report it responsibly.
 
-### 📬 How to Report
+### How to Report
 Choose one of the following:
 - GitHub Security Advisories (preferred)
 - Private contact with the project maintainer
@@ -37,7 +37,7 @@ Provide as much detail as possible:
 
 ---
 
-## ⏱ Response Timeline
+## Response Timeline
 
 We aim to:
 - Acknowledge reports within **72 hours**
@@ -48,7 +48,7 @@ Timelines may vary depending on severity.
 
 ---
 
-## 🧪 Automated Security Controls
+## Automated Security Controls
 
 This repository uses:
 - Automated CI validation
@@ -63,7 +63,7 @@ These measures reduce the risk of:
 
 ---
 
-## 🔍 Scope of Security Issues
+## Scope of Security Issues
 
 ### In Scope
 - Malicious code submissions
@@ -79,7 +79,7 @@ These measures reduce the risk of:
 
 ---
 
-## 🔒 Confidentiality & Disclosure
+## Confidentiality & Disclosure
 
 - All security reports are handled privately
 - Public disclosure occurs **only after mitigation**
@@ -87,7 +87,7 @@ These measures reduce the risk of:
 
 ---
 
-## 🚫 Zero Tolerance Policy
+## Zero Tolerance Policy
 
 The following will result in immediate action:
 - Intentional backdoors
@@ -99,7 +99,7 @@ Offending contributions will be removed and access revoked.
 
 ---
 
-## 🧠 Trust Model
+## Trust Model
 
 Trust is earned through:
 - Transparent contributions
@@ -111,7 +111,7 @@ Security is everyone's responsibility.
 
 ---
 
-## 📜 Policy Changes
+## Policy Changes
 
 This security policy may be updated as the project evolves.
 
@@ -119,7 +119,7 @@ Significant changes will be documented and communicated publicly.
 
 ---
 
-## 📌 Final Note
+## Final Note
 
 Security policies exist to protect:
 - Contributors

@@ -5,7 +5,7 @@ This document describes the internal architecture and design principles of
 
 ---
 
-## 🎯 Design Goals
+## Design Goals
 
 Termux App Store is designed with the following goals:
 
@@ -18,33 +18,33 @@ Termux App Store is designed with the following goals:
 
 ---
 
-## 🧱 High-Level Architecture
+## High-Level Architecture
 ```Text
 ┌──────────────────────────┐
-│      User Interface      │ 
-│   (Textual TUI Layer)    │ 
+│         User Interface        │ 
+│      (Textual TUI Layer)      │ 
 └─────────────┬────────────┘ 
 ┌─────────────▼────────────┐ 
-│     Application Core     │ 
-│  (State, Events, Logic)  │ 
+│        Application Core       │ 
+│     (State, Events, Logic)    │ 
 └─────────────┬────────────┘  
 ┌─────────────▼────────────┐ 
-│     Package Resolver     │ 
-│   (build.sh inspection)  │ 
+│        Package Resolver       │ 
+│     (build.sh inspection)     │ 
 └─────────────┬────────────┘  
 ┌─────────────▼────────────┐ 
-│     Build Executor       │ 
-│  (build-package.sh hook) │ 
+│         Build Executor        │ 
+│    (build-package.sh hook)    │ 
 └─────────────┬────────────┘  
 ┌─────────────▼────────────┐ 
-│     Termux Environment   │ 
-│    (pkg / apt / shell)   │ 
+│       Termux Environment      │ 
+│       (pkg / apt / shell)     │ 
 └──────────────────────────┘
 ```
 
 ---
 
-## 🧠 Core Components
+## Core Components
 
 ### 1. UI Layer (Textual)
 
@@ -140,7 +140,7 @@ The UI **never executes build logic directly**.
 
 ---
 
-## 🔄 Data Flow
+## Data Flow
 
 1. App starts
 2. Root directory resolved
@@ -154,7 +154,7 @@ The UI **never executes build logic directly**.
 
 ---
 
-## 🧵 Concurrency Model
+## Concurrency Model
 
 - UI runs in the main event loop
 - Builds run in background threads
@@ -169,7 +169,7 @@ This avoids:
 
 ---
 
-## 📦 Binary Distribution Architecture
+## Binary Distribution Architecture
 
 Binary builds:
 - Bundle Python runtime
@@ -183,7 +183,7 @@ getattr(sys, "frozen", False)
 ```
 ---
 
-## 🔐 Security Considerations
+## Security Considerations
 - No root access required
 - No system-level writes
 - All shell execution is explicit
@@ -192,7 +192,7 @@ getattr(sys, "frozen", False)
 
 ---
 
-## 🧪 Extensibility
+## Extensibility
 Future extensions may include:
 - Remote repositories
 - Plugin system
@@ -203,7 +203,7 @@ Architecture is intentionally modular.
 
 ---
 
-## 🚫 Non-Goals
+## Non-Goals
 This project intentionally does not:
 - Replace `pkg`
 - Act as a full Linux distro
@@ -212,7 +212,7 @@ This project intentionally does not:
 
 ---
 
-## 🧭 Summary
+## Summary
 Termux App Store is:
 - Modular
 - Portable

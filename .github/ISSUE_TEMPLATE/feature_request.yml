@@ -1,56 +1,63 @@
-name: ✨ Feature Request
-description: Ajukan ide atau fitur baru untuk Termux App Store.
+name: "✨ Feature Request"
+description: "Suggest a new idea or feature for Termux App Store."
 title: "[FEATURE] "
-labels: [enhancement]
+labels: ["enhancement"]
 assignees: []
 
 body:
   - type: markdown
     attributes:
       value: |
-        Terima kasih sudah mengajukan fitur baru!
+        Thank you for suggesting a new feature!
+        Please fill out the details below so we can better understand your idea.
 
   - type: input
     id: feature_title
     attributes:
-      label: Judul Fitur
+      label: "Feature Title"
+      placeholder: "Example: Add package auto-update system"
     validations:
       required: true
 
   - type: textarea
     id: feature_description
     attributes:
-      label: Deskripsi Fitur
+      label: "Feature Description"
+      placeholder: "Describe the feature or improvement in detail"
     validations:
       required: true
 
   - type: dropdown
     id: priority
     attributes:
-      label: Prioritas
+      label: "Priority"
       options:
-        - Tinggi
-        - Sedang
-        - Rendah
+        - "High"
+        - "Medium"
+        - "Low"
     validations:
       required: true
 
   - type: textarea
     id: use_case
     attributes:
-      label: Use Case / Contoh Penggunaan
+      label: "Use Case / Example"
+      placeholder: "Explain how this feature would be used"
 
   - type: textarea
     id: additional_context
     attributes:
-      label: Konteks Tambahan
+      label: "Additional Context"
+      placeholder: "Add any extra information, references, or screenshots"
 
   - type: input
     id: termux_version
     attributes:
-      label: Termux Version
+      label: "Termux Version"
+      placeholder: "Example: 0.145"
 
   - type: input
     id: android_version
     attributes:
-      label: Android Version
+      label: "Android Version"
+      placeholder: "Example: 12"

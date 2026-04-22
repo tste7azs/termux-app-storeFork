@@ -1,28 +1,28 @@
-# ✨ Permintaan Fitur / Feature Request
+# ✨ Feature Request
 
-Gunakan template ini untuk mengusulkan fitur baru atau peningkatan pada Termux App Store. Mohon jelaskan dengan rinci agar tim dapat memahami kebutuhan Anda.
+Use this template to propose a new feature or improvement for Termux App Store. Please describe your request clearly so the team can understand your needs.
 
-Sebelum membuat permintaan fitur, silakan baca **[CONTRIBUTING.md](./CONTRIBUTING.md)** dan pertimbangkan untuk memeriksa **[FAQ.md](./FAQ.md)**. Diskusi juga bisa dilakukan melalui **[GitHub Discussions](https://github.com/djunekz/termux-app-store/discussions)**.
+Before submitting a feature request, please read **[CONTRIBUTING](./CONTRIBUTING.md)** and check **[FAQ](./FAQ.md)**. You can also discuss ideas in **[GitHub Discussions](https://github.com/djunekz/termux-app-store/discussions)**.
 
 ---
 
-**Nama / Username:**  
-Misal: @djunekz
+**Name / Username:**  
+Example: @djunekz
 
-**Versi Termux App Store:**  
-Misal: 1.0.3 / versi binary / versi py
+**Termux App Store Version:**  
+Example: 1.0.3 / binary version / python version
 
-**Deskripsi Fitur / Usulan:**  
-Tuliskan fitur baru atau perbaikan yang diinginkan secara rinci.
+**Feature Description / Proposal:**  
+Describe the new feature or improvement in detail.
 
-**Alasan / Manfaat:**  
-Jelaskan mengapa fitur ini penting atau bagaimana akan membantu pengguna.
+**Reason / Benefits:**  
+Explain why this feature is important or how it would help users.
 
-**Referensi / Contoh (Opsional):**  
-Tambahkan contoh, screenshot, atau referensi jika relevan.
+**References / Examples (Optional):**  
+Provide examples, screenshots, or references if available.
 
-**Prioritas / Tingkat Urgensi:**  
-Misal: Tinggi / Sedang / Rendah
+**Priority / Urgency Level:**  
+Example: High / Medium / Low
 
-**Catatan Tambahan (Opsional):**  
-Informasi tambahan yang bisa membantu tim memahami fitur yang diusulkan.
+**Additional Notes (Optional):**  
+Any extra information that may help the team understand your request.

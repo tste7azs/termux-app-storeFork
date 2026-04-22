@@ -9,13 +9,11 @@ import platform
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-APP_VERSION = "0.1.6"
+APP_VERSION = "0.2.4"
 
-# Allow forks/mirrors without editing the code.
 GITHUB_REPO = os.getenv("TERMUX_APP_STORE_GITHUB_REPO", "djunekz/termux-app-store")
 GITHUB_API_LATEST = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
-# Default to master for compatibility with this repository, but fall back to main.
 _INDEX_BRANCHES = [
     os.getenv("TERMUX_APP_STORE_INDEX_BRANCH", "master"),
     "main",
@@ -83,7 +81,6 @@ def parse_version(version: str) -> Tuple[int, ...]:
       - 1.2.3+meta (build metadata ignored)
     """
     v = (version or "").strip().lstrip("v")
-    # Drop pre-release/build metadata
     v = v.split("+", 1)[0].split("-", 1)[0]
     parts = []
     for p in v.split("."):
@@ -91,7 +88,6 @@ def parse_version(version: str) -> Tuple[int, ...]:
             parts.append(int(p))
         except Exception:
             parts.append(0)
-    # Normalize length
     while len(parts) < 3:
         parts.append(0)
     return tuple(parts[:6])
@@ -263,7 +259,6 @@ class PackageManager:
         desc = pkg.get("description") or pkg.get("desc") or "-"
         pkg.setdefault("desc", desc)
         pkg.setdefault("description", desc)
-        # Keep older keys compatible
         deps = pkg.get("depends")
         if isinstance(deps, str):
             pkg["depends"] = [d.strip() for d in deps.split(",") if d.strip()]
@@ -278,7 +273,6 @@ class PackageManager:
         return None
 
     def get_installed_version(self, name: str) -> Optional[str]:
-        # Termux's `pkg info` is best, but not always available.
         try:
             out = subprocess.check_output(
                 ["pkg", "info", name],
@@ -291,7 +285,6 @@ class PackageManager:
         except Exception:
             pass
 
-        # Fallback to dpkg-query.
         try:
             out = subprocess.check_output(
                 ["dpkg-query", "-W", "-f=${Version}", name],

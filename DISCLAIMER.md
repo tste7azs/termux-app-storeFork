@@ -6,7 +6,7 @@ By using this software, you acknowledge and agree to the following terms.
 
 ---
 
-## ⚠️ No Warranty
+## No Warranty
 
 This project is distributed **without any warranty**, express or implied, including but not limited to:
 
@@ -20,7 +20,7 @@ Use this software **at your own risk**.
 
 ---
 
-## 🧪 Experimental Software
+## Experimental Software
 
 Termux App Store is considered **experimental** software.
 
@@ -36,7 +36,7 @@ This applies to:
 
 ---
 
-## 📦 Package Build Responsibility
+## Package Build Responsibility
 
 Termux App Store acts as a **build orchestrator**, not a package authority.
 
@@ -54,7 +54,7 @@ The project **does not guarantee**:
 
 ---
 
-## 🔐 Security Disclaimer
+## Security Disclaimer
 
 While reasonable care is taken to avoid unsafe behavior:
 
@@ -69,7 +69,7 @@ You are responsible for:
 
 ---
 
-## 🧱 Binary Release Disclaimer
+## Binary Release Disclaimer
 
 Binary releases:
 
@@ -85,7 +85,7 @@ Binary builds may:
 
 ---
 
-## 🧠 No Legal or Professional Advice
+## No Legal or Professional Advice
 
 Nothing in this project constitutes:
 
@@ -97,7 +97,7 @@ Always evaluate the software in your own environment.
 
 ---
 
-## 🛑 Limitation of Liability
+## Limitation of Liability
 
 In no event shall the authors, contributors, or maintainers be liable for:
 
@@ -112,7 +112,7 @@ This limitation applies even if the possibility of such damage has been advised.
 
 ---
 
-## 🌍 Third-Party Content
+## Third-Party Content
 
 This project may interact with or reference third-party software, services, or repositories.
 
@@ -121,7 +121,7 @@ This project may interact with or reference third-party software, services, or r
 
 ---
 
-## 📌 Acceptance of Terms
+## Acceptance of Terms
 
 By installing, copying, modifying, or using Termux App Store, you confirm that you have:
 

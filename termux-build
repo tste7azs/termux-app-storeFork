@@ -57,9 +57,15 @@ case "$COMMAND" in
         exec "$BASE_DIR/termux-build-guide.sh"
         ;;
 
+    init|-i|-I)
+        shift
+        exec "$BASE_DIR/termux-build-init.sh" "$@"
+        ;;
+
     *)
         echo -e "${BOLD_RED}Usage:${RESET}"
         echo -e "  ${GREEN}./termux-build create <package>${RESET}"
+        echo -e "  ${GREEN}./termux-build init <repo-url>${RESET}"
         echo -e "  ${GREEN}./termux-build lint <path | package-name>${RESET}"
         echo -e "  ${GREEN}./termux-build check-pr <package>${RESET}"
         echo -e "  ${GREEN}./termux-build doctor${RESET}"
