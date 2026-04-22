@@ -32,6 +32,10 @@ and this project adheres to semantic versioning.
 - Package `lalin` v1.0.0 - this script automatically install any package for pentest with uptodate tools , and lazy command for run the tools like lazynmap , install another and update to new #actually for lazy people hahaha #and Lalin is remake the lazykali with fixed bugs , added new features and uptodate tools . Its compatible with the latest release of Kali (Rolling)
 - Package `myserver` v1.0.0 - myserver — auto-packaged by termux-build-init
 - Package `parsero` v1.0.0 - Parsero | Robots.txt audit tool
+- Package `red-hawk` v1.0.0 - All in one tool for Information Gathering, Vulnerability Scanning and Crawling. A must have tool for all penetration testers
+- Package `sublist3r` v1.1 - Fast subdomains enumeration tool for penetration testers
+- Package `termuxalpine` v1.0.0 - Use TermuxAlpine.sh calling to install Alpine Linux in Termux on Android. This setup script will attempt to set Alpine Linux up in your Termux environment.
+- Package `the-eye` v1.0.0 - Simple security surveillance script for linux distributions.
 
 ### Changed
 - Package `bashxt` v2.2 - Updated metadata
