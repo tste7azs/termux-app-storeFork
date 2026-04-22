@@ -261,7 +261,6 @@ scan_python_imports() {
     mapfile -t pyfiles < <(find "$src" -maxdepth 3 -name "*.py" 2>/dev/null)
     [[ ${#pyfiles[@]} -eq 0 ]] && echo "" && return
 
-    # Kumpulkan nama file/folder lokal sebagai filter (hindari false positive)
     local local_names
     local_names=$(find "$src" -maxdepth 2 \( -name "*.py" -o -type d \) 2>/dev/null \
         | xargs -I{} basename {} 2>/dev/null \
@@ -274,7 +273,6 @@ scan_python_imports() {
         | sort -u || true)
 
     for mod in $imports; do
-        # Skip jika nama cocok dengan file/folder lokal di source
         if [[ -n "$local_names" ]] && echo "$mod" | grep -qE "^(${local_names})$"; then
             continue
         fi
@@ -900,7 +898,7 @@ step "Downloading & analyzing source"
 info "URL: $SRCURL"
 
 if ! curl -sf --head "$SRCURL" -o /dev/null 2>/dev/null; then
-    fail "Source URL is not accessible: $SRCURL"$'\n'"       Cek nama branch atau pastikan repo tidak private."
+    fail "Source URL is not accessible: $SRCURL"$'\n'"  [ INFO ]  Cek nama branch atau pastikan repo tidak private."
 fi
 
 TMP=$(mktemp -d)
