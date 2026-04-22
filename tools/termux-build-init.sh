@@ -539,8 +539,10 @@ make_install_block() {
     local python_ver="${8:-3}"
 
     local pip_extra_cmd=""
+    local _pip_cmd="pip"
+    [[ "$python_ver" == "2" ]] && _pip_cmd="pip2"
     if [[ -n "$pip_extra" ]]; then
-        pip_extra_cmd="    pip install --quiet $pip_extra --break-system-packages 2>/dev/null || true"
+        pip_extra_cmd="    ${_pip_cmd} install --quiet $pip_extra --break-system-packages 2>/dev/null || true"
     fi
 
     local installer_cmd=""
@@ -584,11 +586,11 @@ BLOCK
 
     python-script)
 cat <<BLOCK
-TERMUX_PKG_DEPENDS="${deps_joined}"
+TERMUX_PKG_DEPENDS="${deps_joined}$(  [[ "$python_ver" == "2" ]] && echo ", python2" || true )"
 TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_make_install() {
-    pip install --quiet setuptools wheel --break-system-packages 2>/dev/null || true
+    ${_pip_cmd} install --quiet setuptools wheel --break-system-packages 2>/dev/null || true
 ${pip_extra_cmd}
 
     local libdir="\$TERMUX_PREFIX/lib/${pkg}"
